@@ -1,0 +1,16 @@
+server:
+  port: 8083
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/abik
+    username: user_abik
+    password: "fghvbn123rty"  # берётся из переменной окружения, зададим в systemd
+    driver-class-name: org.postgresql.Driver
+
+logging:
+  level:
+    root: INFO
+    ru.info.prorabka.abik: INFO
+  file:
+    name: /home/amgvertu/projects/abik/logs/abik.log

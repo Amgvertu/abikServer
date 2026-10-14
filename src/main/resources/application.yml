@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: abik-server
+  profiles:
+    active: dev          # для локальной разработки. На малинке переопределим через systemd.
+  jpa:
+    hibernate:
+      ddl-auto: validate # Flyway создаёт схему, Hibernate её только проверяет
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+        default_schema: public
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+server:
+  port: 8080
+  error:
+    include-message: always
+
+app:
+  jwt:
+    access-ttl-minutes: 30
+    refresh-ttl-days: 60
+    secret: "CHANGE_ME_ON_PROD"

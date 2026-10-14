@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/abik
+    username: user_abik
+    password: "fghvbn123rty"     # ⚠️ ЗАМЕНИ на пароль, который задал на Windows
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+
+logging:
+  level:
+    root: INFO
+    ru.info.prorabka.abik: DEBUG
