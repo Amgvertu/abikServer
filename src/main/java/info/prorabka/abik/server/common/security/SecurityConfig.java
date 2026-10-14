@@ -2,42 +2,53 @@ package info.prorabka.abik.server.common.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 /**
- * Базовая конфигурация безопасности.
- * Пока открываем только /api/v1/health и Swagger, всё остальное — закрыто.
- * Аутентификацию по JWT добавим в модуле auth.
+ * Конфигурация безопасности.
+ * Публичные эндпоинты: /api/v1/health, /api/v1/auth, Swagger.
+ * Остальные — требуют access-токен.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    }
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // Отключаем CSRF — наш API stateless, работает по токенам
                 .csrf(csrf -> csrf.disable())
-                // Не создаём HTTP-сессии — только JWT
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                // Правила доступа
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/api/v1/health/**",
+                                "/api/v1/auth/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
-                // Отключаем дефолтную форму логина и Basic-аутентификацию
+                // Если не аутентифицирован — 401 без редиректа на форму логина
+                .exceptionHandling(eh -> eh
+                        .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED))
+                )
                 .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable());
+                .httpBasic(basic -> basic.disable())
+                // Наш JWT-фильтр ставим перед стандартным фильтром аутентификации
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
-        // ⚠️ Ключевое изменение: возвращаем результат build(), а не сам http
         return http.build();
     }
 }

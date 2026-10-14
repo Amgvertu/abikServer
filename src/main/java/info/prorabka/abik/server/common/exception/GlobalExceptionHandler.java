@@ -1,6 +1,7 @@
 package info.prorabka.abik.server.common.exception;
 
 import info.prorabka.abik.server.common.dto.ApiError;
+import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +18,7 @@ import java.util.List;
  * Глобальный обработчик исключений.
  * Превращает любые исключения в JSON формата ApiError.
  */
+@Hidden
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
