@@ -25,4 +25,6 @@ app:
   jwt:
     access-ttl-minutes: 30
     refresh-ttl-days: 60
-    secret: "CHANGE_ME_ON_PROD"
+    secret: "aB7xK9mN2pQ4wR8tY1uI3oP5aS6dF7gH9jL0zXcVbNmQwErTyUiOpAsD"
+  sms:
+    provider: mock    # на будущее: mock | twilio | smsru
