@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/v1/auth")
 @Tag(name = "Auth",
         description = "Регистрация, вход, обновление токенов. Все эндпоинты доступны без авторизации.")
 public class AuthController {

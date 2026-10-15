@@ -13,7 +13,7 @@ import java.time.OffsetDateTime;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1")
+@RequestMapping("/v1")
 @Tag(name = "Health", description = "Проверка работоспособности сервиса. Доступно без авторизации.")
 public class HealthController {
 
