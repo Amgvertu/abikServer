@@ -17,7 +17,7 @@ spring:
     locations: classpath:db/migration
 
 server:
-  port: 8080
+  port: 8083
   error:
     include-message: always
 

@@ -39,7 +39,7 @@ public class OpenApiConfig {
                         .license(new License().name("Proprietary")))
                 .servers(List.of(
                         new Server().url("/api/abik").description("Прод (через nginx)"),
-                        new Server().url("http://localhost:8080").description("Локальная разработка")
+                        new Server().url("http://localhost:8080/api").description("Локальная разработка")
                 ))
                 .components(new Components()
                         .addSecuritySchemes(SECURITY_SCHEME_NAME,
