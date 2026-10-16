@@ -39,3 +39,5 @@ out/
 # Локальные дампы и логи
 abikServer.txt
 *.txt
+
+firebase-service-account.json

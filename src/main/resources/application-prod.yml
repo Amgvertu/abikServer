@@ -15,3 +15,11 @@ logging:
     ru.info.prorabka.abik: INFO
   file:
     name: /home/amgvertu/projects/abik/logs/abik.log
+
+app:
+  push:
+    rustore:
+      project-id: ${RUSTORE_PROJECT_ID:}
+      service-token: ${RUSTORE_SERVICE_TOKEN:}
+    fcm:
+      service-account-path: "file:/home/amgvertu/projects/abik/config/firebase-service-account.json"
