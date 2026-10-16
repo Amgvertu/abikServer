@@ -7,6 +7,7 @@ import info.prorabka.abik.server.charge.repository.ChargeSubgroupRepository;
 import info.prorabka.abik.server.common.exception.BadRequestException;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
+import info.prorabka.abik.server.payment.service.PaymentService;
 import info.prorabka.abik.server.team.entity.MemberStatus;
 import info.prorabka.abik.server.team.entity.Team;
 import info.prorabka.abik.server.team.entity.TeamStatus;
@@ -59,6 +60,7 @@ public class ChargeService {
     private final UserProfileRepository userProfileRepository;
     private final ChargeTemplateRepository templateRepository;
     private final RegionRepository regionRepository;
+    private final PaymentService paymentService;
 
 
     public ChargeService(ChargeRepository chargeRepository,
@@ -70,7 +72,8 @@ public class ChargeService {
                          UserRepository userRepository,
                          UserProfileRepository userProfileRepository,
                          ChargeTemplateRepository templateRepository,
-                         RegionRepository regionRepository) {
+                         RegionRepository regionRepository,
+                         PaymentService paymentService) {          // ⬅️ новый параметр
         this.chargeRepository = chargeRepository;
         this.subgroupRepository = subgroupRepository;
         this.groupService = groupService;
@@ -81,6 +84,7 @@ public class ChargeService {
         this.userProfileRepository = userProfileRepository;
         this.templateRepository = templateRepository;
         this.regionRepository = regionRepository;
+        this.paymentService = paymentService;                       // ⬅️ новая строка
     }
 
     // ============================================================
@@ -211,7 +215,6 @@ public class ChargeService {
         if (!charge.getTeamId().equals(teamId)) {
             throw new ForbiddenException("Начисление принадлежит другой команде");
         }
-
         if (charge.getStatus() == ChargeStatus.CANCELLED) {
             throw new BadRequestException("Начисление уже отменено");
         }
@@ -219,11 +222,16 @@ public class ChargeService {
             throw new BadRequestException("Начисление в архиве");
         }
 
+        // Помечаем CANCELLED и обнуляем paid, чтобы долг «исчез» из списка активных
         charge.setStatus(ChargeStatus.CANCELLED);
+        charge.setPaidKopecks(0L);
         charge.setCancelledAt(OffsetDateTime.now());
         charge.setCancelReason(req.reason().trim());
-
         Charge saved = chargeRepository.save(charge);
+
+        // Перераспределяем «освободившиеся» деньги на оставшиеся долги
+        paymentService.reallocateAfterChargeCancel(saved);
+
         log.info("Начисление отменено: chargeId={}, actor={}, reason={}",
                 chargeId, actorUserId, req.reason());
         return toResponse(saved);

@@ -29,6 +29,9 @@ dependencies {
 	runtimeOnly 'org.postgresql:postgresql'
 	annotationProcessor 'org.projectlombok:lombok'
 
+	// Apache POI — для экспорта в Excel (.xlsx)
+	implementation 'org.apache.poi:poi-ooxml:5.3.0'
+
 	// JWT — для access/refresh токенов
 	implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
