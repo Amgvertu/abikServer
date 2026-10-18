@@ -38,8 +38,14 @@ public class OpenApiConfig {
                                 .url("https://varamy.online"))
                         .license(new License().name("Proprietary")))
                 .servers(List.of(
-                        new Server().url("/api/abik").description("Прод (через nginx)"),
-                        new Server().url("http://localhost:8080/api").description("Локальная разработка")
+                        // Относительный путь: Swagger сам подставит текущий IP (192.168.0.119:8083 или varamy.online)
+                        new Server().url("/api").description("Текущий хост (прямое подключение / локальная сеть)"),
+
+                        // Прод через Nginx
+                        new Server().url("https://varamy.online/api/abik").description("Прод (через nginx)"),
+
+                        // Локальный ПК
+                        new Server().url("http://localhost:8080/api").description("Локальный ПК (Windows)")
                 ))
                 .components(new Components()
                         .addSecuritySchemes(SECURITY_SCHEME_NAME,
