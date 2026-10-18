@@ -3,9 +3,14 @@ package info.prorabka.abik.server.payment.service;
 import info.prorabka.abik.server.charge.entity.Charge;
 import info.prorabka.abik.server.charge.entity.ChargeStatus;
 import info.prorabka.abik.server.charge.repository.ChargeRepository;
+import info.prorabka.abik.server.common.exception.BadRequestException;
+import info.prorabka.abik.server.payment.dto.BalanceAdjustmentRequest;
+import info.prorabka.abik.server.payment.dto.BalanceAdjustmentResponse;
 import info.prorabka.abik.server.payment.dto.BalanceResponse;
 import info.prorabka.abik.server.payment.entity.Balance;
+import info.prorabka.abik.server.payment.entity.BalanceAdjustment;
 import info.prorabka.abik.server.payment.entity.BalanceId;
+import info.prorabka.abik.server.payment.repository.BalanceAdjustmentRepository;
 import info.prorabka.abik.server.payment.repository.BalanceRepository;
 import info.prorabka.abik.server.payment.repository.PaymentRepository;
 import info.prorabka.abik.server.team.entity.MemberStatus;
@@ -42,19 +47,22 @@ public class BalanceService {
     private final TeamMemberRepository teamMemberRepository;
     private final TeamMemberService teamMemberService;
     private final UserProfileRepository userProfileRepository;
+    private final BalanceAdjustmentRepository adjustmentRepository;
 
     public BalanceService(BalanceRepository balanceRepository,
                           PaymentRepository paymentRepository,
                           ChargeRepository chargeRepository,
                           TeamMemberRepository teamMemberRepository,
                           TeamMemberService teamMemberService,
-                          UserProfileRepository userProfileRepository) {
+                          UserProfileRepository userProfileRepository,
+                          BalanceAdjustmentRepository adjustmentRepository) {
         this.balanceRepository = balanceRepository;
         this.paymentRepository = paymentRepository;
         this.chargeRepository = chargeRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamMemberService = teamMemberService;
         this.userProfileRepository = userProfileRepository;
+        this.adjustmentRepository = adjustmentRepository;
     }
 
     // ============================================================
@@ -69,7 +77,8 @@ public class BalanceService {
     public Balance recalculate(Long teamId, Long userId) {
         long paid = paymentRepository.sumActiveByTeamAndUser(teamId, userId);
         long due = sumActiveCharges(teamId, userId);
-        long balance = paid - due;
+        long adjustments = adjustmentRepository.sumByTeamAndUser(teamId, userId);
+        long balance = paid - due + adjustments;
 
         BalanceId id = new BalanceId(teamId, userId);
         Balance entity = balanceRepository.findById(id).orElseGet(() ->
@@ -187,6 +196,39 @@ public class BalanceService {
     public long getRawBalance(Long teamId, Long userId) {
         long paid = paymentRepository.sumActiveByTeamAndUser(teamId, userId);
         long due = sumActiveCharges(teamId, userId);
-        return paid - due;
+        long adjustments = adjustmentRepository.sumByTeamAndUser(teamId, userId);
+        return paid - due + adjustments;
+    }
+
+    // ============================================================
+    // Корректировки баланса
+    // ============================================================
+
+    @Transactional
+    public BalanceAdjustmentResponse adjust(Long teamId, Long userId, Long actorUserId, BalanceAdjustmentRequest req) {
+        // Проверяем, что пользователь в команде
+        if (!teamMemberRepository.existsByTeamIdAndUserIdAndStatus(teamId, userId, MemberStatus.ACTIVE)) {
+            throw new BadRequestException("Пользователь не является активным участником команды");
+        }
+
+        BalanceAdjustment adjustment = BalanceAdjustment.builder()
+                .teamId(teamId)
+                .userId(userId)
+                .amountKopecks(req.amountKopecks())
+                .reason(req.reason().trim())
+                .createdByUserId(actorUserId)
+                .build();
+        BalanceAdjustment saved = adjustmentRepository.save(adjustment);
+
+        // Сразу пересчитываем баланс
+        recalculate(teamId, userId);
+
+        return BalanceAdjustmentResponse.from(saved);
+    }
+
+    public List<BalanceAdjustmentResponse> getAdjustmentHistory(Long teamId, Long userId) {
+        return adjustmentRepository.findByTeamIdAndUserIdOrderByCreatedAtDesc(teamId, userId).stream()
+                .map(BalanceAdjustmentResponse::from)
+                .toList();
     }
 }

@@ -50,10 +50,14 @@ public class User {
         OffsetDateTime now = OffsetDateTime.now();
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
+        if (isSuperAdmin == null) isSuperAdmin = false;
     }
 
     @PreUpdate
     void onUpdate() {
         updatedAt = OffsetDateTime.now();
     }
+
+    @Column(name = "is_super_admin", nullable = false)
+    private Boolean isSuperAdmin;
 }

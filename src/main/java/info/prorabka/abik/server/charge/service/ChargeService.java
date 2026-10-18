@@ -7,6 +7,7 @@ import info.prorabka.abik.server.charge.repository.ChargeSubgroupRepository;
 import info.prorabka.abik.server.common.exception.BadRequestException;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
+import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.payment.service.PaymentService;
 import info.prorabka.abik.server.team.entity.MemberStatus;
 import info.prorabka.abik.server.team.entity.Team;
@@ -61,6 +62,7 @@ public class ChargeService {
     private final ChargeTemplateRepository templateRepository;
     private final RegionRepository regionRepository;
     private final PaymentService paymentService;
+    private final NotificationService notificationService;
 
 
     public ChargeService(ChargeRepository chargeRepository,
@@ -73,7 +75,8 @@ public class ChargeService {
                          UserProfileRepository userProfileRepository,
                          ChargeTemplateRepository templateRepository,
                          RegionRepository regionRepository,
-                         PaymentService paymentService) {          // ⬅️ новый параметр
+                         PaymentService paymentService,
+                         NotificationService notificationService) {          // ⬅️ новый параметр
         this.chargeRepository = chargeRepository;
         this.subgroupRepository = subgroupRepository;
         this.groupService = groupService;
@@ -84,7 +87,8 @@ public class ChargeService {
         this.userProfileRepository = userProfileRepository;
         this.templateRepository = templateRepository;
         this.regionRepository = regionRepository;
-        this.paymentService = paymentService;                       // ⬅️ новая строка
+        this.paymentService = paymentService;
+        this.notificationService = notificationService;// ⬅️ новая строка
     }
 
     // ============================================================
@@ -150,6 +154,8 @@ public class ChargeService {
                     .dueDate(req.dueDate())
                     .build();
             created.add(chargeRepository.save(charge));
+            notificationService.notifyNewCharge(userId, teamId, team.getName(),
+                    charge.getId(), charge.getAmountKopecks(), charge.getDescription());
         }
 
         log.info("Создано {} разовых начислений: teamId={}, actor={}, сумма/чел={} копеек",
@@ -332,6 +338,7 @@ public class ChargeService {
     }
 
     /** Генерация для одной команды. */
+    /** Генерация для одной команды. */
     private int generateForTeam(Team team, LocalDate today) {
         // Локальная дата команды
         LocalDate localToday = today;
@@ -416,7 +423,13 @@ public class ChargeService {
                         .periodYear(periodYear)
                         .periodMonth(periodMonth)
                         .build();
+
                 chargeRepository.save(charge);
+
+                // ВОТ ОНО, УВЕДОМЛЕНИЕ:
+                notificationService.notifyNewCharge(userId, team.getId(), team.getName(),
+                        charge.getId(), charge.getAmountKopecks(), charge.getDescription());
+
                 created++;
             }
         }

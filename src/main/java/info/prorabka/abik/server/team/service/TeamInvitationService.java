@@ -5,6 +5,7 @@ import info.prorabka.abik.server.common.exception.ConflictException;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
 import info.prorabka.abik.server.common.util.PhoneNormalizer;
+import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.team.dto.InvitationResponse;
 import info.prorabka.abik.server.team.entity.*;
 import info.prorabka.abik.server.team.repository.TeamInvitationRepository;
@@ -36,17 +37,20 @@ public class TeamInvitationService {
     private final TeamRepository teamRepository;
     private final UserRepository userRepository;
     private final TeamMemberService teamMemberService;
+    private final NotificationService notificationService;
 
     public TeamInvitationService(TeamInvitationRepository invitationRepository,
                                  TeamMemberRepository teamMemberRepository,
                                  TeamRepository teamRepository,
                                  UserRepository userRepository,
-                                 TeamMemberService teamMemberService) {
+                                 TeamMemberService teamMemberService,
+                                 NotificationService notificationService) {
         this.invitationRepository = invitationRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.teamRepository = teamRepository;
         this.userRepository = userRepository;
         this.teamMemberService = teamMemberService;
+        this.notificationService = notificationService;
     }
 
     // ============================================================
@@ -98,6 +102,9 @@ public class TeamInvitationService {
         TeamInvitation saved = invitationRepository.save(invitation);
         log.info("Приглашение создано: teamId={}, invitedUserId={}, by={}",
                 teamId, invited.getId(), actorUserId);
+
+        notificationService.notifyInvitation(invited.getId(), teamId, team.getName(),
+                "Пользователь #" + actorUserId); // TODO: подтянуть ФИО приглашающего
 
         return InvitationResponse.from(saved, team.getName());
     }
@@ -157,6 +164,11 @@ public class TeamInvitationService {
 
         log.info("Приглашение принято: invitationId={}, userId={}, teamId={}",
                 invitationId, userId, inv.getTeamId());
+
+        Team team = teamRepository.findById(inv.getTeamId()).orElse(null);
+        String teamName = team != null ? team.getName() : "удалена";
+        notificationService.notifyInvitationAccepted(inv.getInviterUserId(), inv.getTeamId(),
+                teamName, "Пользователь #" + userId);
 
         return toResponseWithTeamName(saved);
     }

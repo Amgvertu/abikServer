@@ -18,6 +18,7 @@ import info.prorabka.abik.server.team.repository.TeamMemberRepository;
 import info.prorabka.abik.server.team.repository.TeamRepository;
 import info.prorabka.abik.server.team.service.TeamMemberService;
 import info.prorabka.abik.server.user.repository.UserProfileRepository;
+import info.prorabka.abik.server.notification.service.NotificationService;
 import java.util.HashMap;
 import java.util.Map;
 import org.slf4j.Logger;
@@ -47,6 +48,7 @@ public class PaymentService {
     private final TeamMemberService teamMemberService;
     private final UserProfileRepository userProfileRepository;
     private final BalanceService balanceService;
+    private final NotificationService notificationService;
 
     public PaymentService(PaymentRepository paymentRepository,
                           PaymentAllocationRepository allocationRepository,
@@ -55,7 +57,8 @@ public class PaymentService {
                           TeamRepository teamRepository,
                           TeamMemberService teamMemberService,
                           UserProfileRepository userProfileRepository,
-                          BalanceService balanceService) {
+                          BalanceService balanceService,
+                          NotificationService notificationService) {
         this.paymentRepository = paymentRepository;
         this.allocationRepository = allocationRepository;
         this.chargeRepository = chargeRepository;
@@ -64,6 +67,7 @@ public class PaymentService {
         this.teamMemberService = teamMemberService;
         this.userProfileRepository = userProfileRepository;
         this.balanceService = balanceService;
+        this.notificationService = notificationService;
     }
 
     // ============================================================
@@ -103,7 +107,7 @@ public class PaymentService {
 
         // 6. Пересчёт баланса
         balanceService.recalculate(teamId, req.userId());
-
+        notificationService.notifyPayment(req.userId(), teamId, team.getName(), req.amountKopecks(), "Владелец/модератор");
         log.info("Платёж внесён: teamId={}, userId={}, amount={} копеек, by={}",
                 teamId, req.userId(), req.amountKopecks(), actorUserId);
 

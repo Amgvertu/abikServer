@@ -2,6 +2,7 @@ package info.prorabka.abik.server.team.service;
 
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
+import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.team.dto.SetJerseyNumberRequest;
 import info.prorabka.abik.server.team.dto.TeamMemberResponse;
 import info.prorabka.abik.server.team.dto.UpdateMemberRoleRequest;
@@ -29,13 +30,16 @@ public class TeamMemberService {
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final NotificationService notificationService;
 
     public TeamMemberService(TeamMemberRepository teamMemberRepository,
                              UserRepository userRepository,
-                             UserProfileRepository userProfileRepository) {
+                             UserProfileRepository userProfileRepository,
+                             NotificationService notificationService) {
         this.teamMemberRepository = teamMemberRepository;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
+        this.notificationService=notificationService;
     }
 
     // ============================================================
@@ -124,6 +128,7 @@ public class TeamMemberService {
         target.setRole(req.role());
         TeamMember saved = teamMemberRepository.save(target);
         log.info("Роль изменена: teamId={}, userId={}, newRole={}", teamId, targetUserId, req.role());
+        notificationService.notifyRoleChanged(targetUserId, teamId, "команда #" + teamId, req.role().name());
         return toResponse(saved);
     }
 
@@ -172,6 +177,7 @@ public class TeamMemberService {
         target.setExcludedAt(OffsetDateTime.now());
         target.setJerseyNumber(null);
         teamMemberRepository.save(target);
+        notificationService.notifyExcluded(targetUserId, teamId, "команда #" + teamId);
         log.info("Участник исключён: teamId={}, userId={}", teamId, targetUserId);
     }
 
@@ -248,5 +254,20 @@ public class TeamMemberService {
         }
 
         return TeamMemberResponse.from(m, phone, lastName, firstName);
+    }
+
+    /** Проверить, является ли пользователь суперадмином. */
+    public boolean isSuperAdmin(Long userId) {
+        return userRepository.findById(userId)
+                .map(User::getIsSuperAdmin)
+                .orElse(false);
+    }
+
+    /** Проверка прав: владелец, модератор ИЛИ суперадмин. */
+    public void requireManagerOrSuperAdmin(Long teamId, Long userId) {
+        if (isSuperAdmin(userId)) {
+            return; // Суперадмин может всё
+        }
+        requireManager(teamId, userId);
     }
 }

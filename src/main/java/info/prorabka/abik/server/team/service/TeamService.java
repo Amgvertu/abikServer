@@ -6,6 +6,7 @@ import info.prorabka.abik.server.common.exception.NotFoundException;
 import info.prorabka.abik.server.geo.entity.City;
 import info.prorabka.abik.server.geo.entity.Region;
 import info.prorabka.abik.server.geo.service.GeoService;
+import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.team.dto.TeamCreateRequest;
 import info.prorabka.abik.server.team.dto.TeamDetailResponse;
 import info.prorabka.abik.server.team.dto.TeamResponse;
@@ -35,17 +36,20 @@ public class TeamService {
     private final OwnershipTransferRepository ownershipTransferRepository;
     private final TeamMemberService teamMemberService;
     private final GeoService geoService;
+    private final NotificationService notificationService;
 
     public TeamService(TeamRepository teamRepository,
                        TeamMemberRepository teamMemberRepository,
                        OwnershipTransferRepository ownershipTransferRepository,
                        TeamMemberService teamMemberService,
-                       GeoService geoService) {
+                       GeoService geoService,
+                       NotificationService notificationService) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.ownershipTransferRepository = ownershipTransferRepository;
         this.teamMemberService = teamMemberService;
         this.geoService = geoService;
+        this.notificationService = notificationService;
     }
 
     // ============================================================
@@ -147,7 +151,7 @@ public class TeamService {
         team.setStatus(TeamStatus.ARCHIVED);
         team.setArchivedAt(OffsetDateTime.now());
         Team saved = teamRepository.save(team);
-
+        notificationService.notifyTeamArchived(actorUserId, teamId, team.getName());
         log.info("Команда архивирована: teamId={}, actorUserId={}", teamId, actorUserId);
         return buildDetail(saved, actorUserId);
     }
@@ -185,6 +189,9 @@ public class TeamService {
                 .build());
 
         log.info("Владение передано: teamId={}, from={}, to={}", teamId, actorUserId, newOwnerUserId);
+        Team team = getTeamOrThrow(teamId);
+
+        notificationService.notifyOwnershipTransferred(newOwnerUserId, actorUserId, teamId, team.getName());
 
         return buildDetail(getTeamOrThrow(teamId), actorUserId);
     }
@@ -222,5 +229,11 @@ public class TeamService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    public List<TeamResponse> listAllTeams() {
+        return teamRepository.findAllByOrderByNameAsc().stream()
+                .map(this::buildShort)
+                .toList();
     }
 }
