@@ -27,4 +27,11 @@ app:
     refresh-ttl-days: 60
     secret: "aB7xK9mN2pQ4wR8tY1uI3oP5aS6dF7gH9jL0zXcVbNmQwErTyUiOpAsD"
   sms:
-    provider: mock    # на будущее: mock | twilio | smsru
+    provider: mock
+  files:
+    dir: "./uploads"                 # папка для аватаров и логотипов
+    max-size-bytes: 5242880          # 5 МБ
+    allowed-mime: "image/jpeg,image/png,image/webp"
+  fcm:
+    service-account-path: "classpath:firebase-service-account.json"
+    enabled: true                    # false — в dev-режиме просто логировать

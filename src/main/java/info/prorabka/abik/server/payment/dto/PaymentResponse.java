@@ -1,6 +1,7 @@
 package info.prorabka.abik.server.payment.dto;
 
 import info.prorabka.abik.server.payment.entity.Payment;
+import java.time.LocalDate;
 
 import java.time.OffsetDateTime;
 
@@ -15,6 +16,7 @@ public record PaymentResponse(
         String userLastName,
         String userFirstName,
         Long amountKopecks,
+        LocalDate paidAt,          // ← НОВОЕ
         String description,
         Long createdByUserId,
         String createdByLastName,
@@ -26,18 +28,13 @@ public record PaymentResponse(
                                        String userLastName, String userFirstName,
                                        String byLastName, String byFirstName) {
         return new PaymentResponse(
-                p.getId(),
-                p.getTeamId(),
-                p.getUserId(),
-                userLastName,
-                userFirstName,
+                p.getId(), p.getTeamId(), p.getUserId(),
+                userLastName, userFirstName,
                 p.getAmountKopecks(),
+                p.getPaidAt(),                    // ← НОВОЕ
                 p.getDescription(),
-                p.getCreatedByUserId(),
-                byLastName,
-                byFirstName,
-                p.getCreatedAt(),
-                p.getUpdatedAt()
+                p.getCreatedByUserId(), byLastName, byFirstName,
+                p.getCreatedAt(), p.getUpdatedAt()
         );
     }
 }

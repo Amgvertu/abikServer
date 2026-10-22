@@ -54,5 +54,8 @@ public record UserProfileRequest(
         String coversSize,
 
         @Size(max = 20)
-        String gaitersSize
+        String gaitersSize,
+
+        @Size(max = 500)
+        String avatarUrl
 ) {}

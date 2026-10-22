@@ -97,6 +97,7 @@ public class PaymentService {
                 .teamId(teamId)
                 .userId(req.userId())
                 .amountKopecks(req.amountKopecks())
+                .paidAt(req.paidAt() != null ? req.paidAt() : java.time.LocalDate.now())
                 .description(trimOrNull(req.description()))
                 .createdByUserId(actorUserId)
                 .build();
@@ -215,18 +216,40 @@ public class PaymentService {
             throw new ForbiddenException("Платёж принадлежит другой команде");
         }
 
-        // Откатываем старые аллокации и пересобираем заново с новой суммой
+        Long oldUserId = payment.getUserId();
+        Long newUserId = req.userId() != null ? req.userId() : oldUserId;
+
+        // Если пользователь меняется — проверим, что новый получатель активен
+        if (!newUserId.equals(oldUserId)) {
+            if (!teamMemberRepository.existsByTeamIdAndUserIdAndStatus(
+                    teamId, newUserId, MemberStatus.ACTIVE)) {
+                throw new BadRequestException("Новый получатель не является активным участником");
+            }
+        }
+
+        // Откатываем старые аллокации (по старому получателю)
         revertAllocations(payment);
 
+        payment.setUserId(newUserId);
         payment.setAmountKopecks(req.amountKopecks());
+        if (req.paidAt() != null) {
+            payment.setPaidAt(req.paidAt());
+        }
         payment.setDescription(trimOrNull(req.description()));
+
         Payment saved = paymentRepository.save(payment);
 
+        // Пересобираем распределение по новому получателю
         distribute(saved);
-        balanceService.recalculate(teamId, payment.getUserId());
 
-        log.info("Платёж обновлён: paymentId={}, новая сумма={}",
-                paymentId, req.amountKopecks());
+        // Пересчитать балансы обоих пользователей
+        balanceService.recalculate(teamId, newUserId);
+        if (!oldUserId.equals(newUserId)) {
+            balanceService.recalculate(teamId, oldUserId);
+        }
+
+        log.info("Платёж обновлён: paymentId={}, сумма={}, userId={}",
+                paymentId, req.amountKopecks(), newUserId);
         return toResponse(saved);
     }
 

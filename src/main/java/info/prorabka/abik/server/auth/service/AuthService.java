@@ -221,4 +221,37 @@ public class AuthService {
 
         return new AuthResponse(tokens, UserResponse.from(user));
     }
+
+    // ============================================================
+// Восстановление пароля
+// ============================================================
+
+    @Transactional
+    public void passwordResetStart(PasswordResetStartRequest req) {
+        String phone = PhoneNormalizer.normalize(req.phone());
+        User user = userRepository.findByPhone(phone).orElse(null);
+        if (user == null || user.getStatus() != UserStatus.ACTIVE) {
+            // Не раскрываем факт регистрации
+            log.info("Запрос сброса пароля для несуществующего/неактивного номера");
+            return;
+        }
+        smsCodeService.generateAndSend(phone, SmsPurpose.PASSWORD_RESET);
+    }
+
+    @Transactional
+    public void passwordResetConfirm(PasswordResetConfirmRequest req) {
+        String phone = PhoneNormalizer.normalize(req.phone());
+        smsCodeService.verify(phone, SmsPurpose.PASSWORD_RESET, req.code());
+
+        User user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new BadRequestException("Пользователь не найден"));
+
+        user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        userRepository.save(user);
+
+        // Отозвать все refresh
+        refreshTokenService.revokeAll(user.getId());
+
+        log.info("Пароль сброшен: userId={}", user.getId());
+    }
 }

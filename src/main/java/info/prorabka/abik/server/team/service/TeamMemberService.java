@@ -56,8 +56,10 @@ public class TeamMemberService {
     /** Владелец или модератор. Иначе — 403. */
     public TeamMember requireManager(Long teamId, Long userId) {
         TeamMember member = requireMember(teamId, userId);
-        if (member.getRole() != MemberRole.OWNER && member.getRole() != MemberRole.MODERATOR) {
-            throw new ForbiddenException("Недостаточно прав: нужна роль владельца или модератора");
+        if (member.getRole() != MemberRole.OWNER
+                && member.getRole() != MemberRole.ADMIN           // ← добавить
+                && member.getRole() != MemberRole.MODERATOR) {
+            throw new ForbiddenException("Недостаточно прав: нужна роль владельца, админа или модератора");
         }
         return member;
     }
@@ -122,6 +124,10 @@ public class TeamMemberService {
 
         if (req.role() == MemberRole.OWNER) {
             throw new ForbiddenException("Для передачи владения используйте отдельный endpoint");
+        }
+// ADMIN может назначать только владелец
+        if (req.role() == MemberRole.ADMIN && requireOwner(teamId, actorUserId).getRole() != MemberRole.OWNER) {
+            throw new ForbiddenException("Назначать админов может только владелец");
         }
 
         TeamMember target = requireMember(teamId, targetUserId);
@@ -269,5 +275,23 @@ public class TeamMemberService {
             return; // Суперадмин может всё
         }
         requireManager(teamId, userId);
+    }
+
+    @Transactional
+    public TeamMemberResponse setTrainer(Long teamId, Long targetUserId, Long actorUserId,
+                                         boolean isTrainer) {
+        TeamMember actor = requireManager(teamId, actorUserId);
+        // Тренера назначает только OWNER или ADMIN
+        if (actor.getRole() != MemberRole.OWNER && actor.getRole() != MemberRole.ADMIN) {
+            throw new ForbiddenException("Назначать тренера может только владелец или админ");
+        }
+        TeamMember target = requireMember(teamId, targetUserId);
+        target.setIsTrainer(isTrainer);
+        TeamMember saved = teamMemberRepository.save(target);
+        log.info("Тренер обновлён: teamId={}, userId={}, isTrainer={}",
+                teamId, targetUserId, isTrainer);
+        notificationService.notifyRoleChanged(targetUserId, teamId,
+                "команда #" + teamId, isTrainer ? "TRAINER" : "не тренер");
+        return toResponse(saved);
     }
 }

@@ -352,4 +352,17 @@ public class TeamsController {
         return ResponseEntity.ok(
                 teamInvitationService.listTeamOutgoing(teamId, actorId));
     }
+
+    @Operation(summary = "Назначить/снять тренера",
+            description = "Доступ: владелец или админ команды.")
+    @PutMapping("/{teamId}/members/{targetUserId}/trainer")
+    public ResponseEntity<TeamMemberResponse> setTrainer(
+            @PathVariable Long teamId,
+            @PathVariable Long targetUserId,
+            @RequestBody Map<String, Boolean> body) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        boolean flag = Boolean.TRUE.equals(body.get("isTrainer"));
+        return ResponseEntity.ok(
+                teamMemberService.setTrainer(teamId, targetUserId, actorId, flag));
+    }
 }

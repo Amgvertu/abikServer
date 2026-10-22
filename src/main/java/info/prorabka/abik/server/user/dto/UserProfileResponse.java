@@ -28,6 +28,7 @@ public record UserProfileResponse(
         String jerseySize,
         String coversSize,
         String gaitersSize,
+        String avatarUrl,
         OffsetDateTime updatedAt
 ) {
     public static UserProfileResponse from(UserProfile p, String cityName, Long regionId, String regionName) {
@@ -48,6 +49,7 @@ public record UserProfileResponse(
                 p.getJerseySize(),
                 p.getCoversSize(),
                 p.getGaitersSize(),
+                p.getAvatarUrl(),
                 p.getUpdatedAt()
         );
     }

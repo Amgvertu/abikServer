@@ -19,6 +19,7 @@ public record TeamMemberResponse(
         MemberRole role,
         MemberStatus status,
         Short jerseyNumber,
+        Boolean isTrainer,        // ← НОВОЕ
         OffsetDateTime joinedAt
 ) {
     public static TeamMemberResponse from(TeamMember m,
@@ -26,14 +27,9 @@ public record TeamMemberResponse(
                                           String lastName,
                                           String firstName) {
         return new TeamMemberResponse(
-                m.getId(),
-                m.getUserId(),
-                phone,
-                lastName,
-                firstName,
-                m.getRole(),
-                m.getStatus(),
-                m.getJerseyNumber(),
+                m.getId(), m.getUserId(), phone, lastName, firstName,
+                m.getRole(), m.getStatus(), m.getJerseyNumber(),
+                m.getIsTrainer(),                 // ← НОВОЕ
                 m.getJoinedAt()
         );
     }

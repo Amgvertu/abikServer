@@ -1,10 +1,9 @@
 package info.prorabka.abik.server.user.controller;
 
 import info.prorabka.abik.server.common.security.SecurityUtils;
-import info.prorabka.abik.server.user.dto.UserProfileRequest;
-import info.prorabka.abik.server.user.dto.UserProfileResponse;
-import info.prorabka.abik.server.user.dto.UserResponse;
+import info.prorabka.abik.server.user.dto.*;
 import info.prorabka.abik.server.user.entity.User;
+import info.prorabka.abik.server.user.service.PhoneChangeService;
 import info.prorabka.abik.server.user.service.UserProfileService;
 import info.prorabka.abik.server.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +18,8 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 /**
  * Эндпоинты для пользователей и профилей.
  * Требуют авторизации (см. SecurityConfig).
@@ -32,10 +33,12 @@ public class UsersController {
 
     private final UserService userService;
     private final UserProfileService userProfileService;
+    private final PhoneChangeService phoneChangeService;
 
-    public UsersController(UserService userService, UserProfileService userProfileService) {
+    public UsersController(UserService userService, UserProfileService userProfileService, PhoneChangeService phoneChangeService) {
         this.userService = userService;
         this.userProfileService = userProfileService;
+        this.phoneChangeService = phoneChangeService;
     }
 
     @Operation(
@@ -111,5 +114,43 @@ public class UsersController {
             @Parameter(description = "ID пользователя", example = "1")
             @PathVariable Long userId) {
         return ResponseEntity.ok(userProfileService.getByUserId(userId));
+    }
+
+    // ============================================================
+// Смена номера телефона
+// ============================================================
+
+    @Operation(summary = "Смена номера: запрос SMS на текущий номер")
+    @PostMapping("/me/phone-change/start")
+    public ResponseEntity<Map<String, String>> phoneChangeStart() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        phoneChangeService.start(userId);
+        return ResponseEntity.ok(Map.of("message", "SMS отправлено на текущий номер"));
+    }
+
+    @Operation(summary = "Смена номера: проверка кода старого номера")
+    @PostMapping("/me/phone-change/verify-old")
+    public ResponseEntity<Map<String, String>> phoneChangeVerifyOld(
+            @Valid @RequestBody PhoneChangeVerifyOldRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(phoneChangeService.verifyOld(userId, req.code()));
+    }
+
+    @Operation(summary = "Смена номера: запрос SMS на новый номер")
+    @PostMapping("/me/phone-change/send-new")
+    public ResponseEntity<Map<String, String>> phoneChangeSendNew(
+            @Valid @RequestBody PhoneChangeSendNewRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        phoneChangeService.sendNew(userId, req.changeToken(), req.newPhone());
+        return ResponseEntity.ok(Map.of("message", "SMS отправлено на новый номер"));
+    }
+
+    @Operation(summary = "Смена номера: подтверждение нового номера")
+    @PostMapping("/me/phone-change/confirm")
+    public ResponseEntity<Map<String, String>> phoneChangeConfirm(
+            @Valid @RequestBody PhoneChangeConfirmRequest req) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        phoneChangeService.confirm(userId, req.changeToken(), req.code());
+        return ResponseEntity.ok(Map.of("message", "Номер изменён. Войдите заново."));
     }
 }

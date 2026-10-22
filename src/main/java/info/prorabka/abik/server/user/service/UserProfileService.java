@@ -57,6 +57,7 @@ public class UserProfileService {
         profile.setJerseySize(trimOrNull(req.jerseySize()));
         profile.setCoversSize(trimOrNull(req.coversSize()));
         profile.setGaitersSize(trimOrNull(req.gaitersSize()));
+        profile.setAvatarUrl(trimOrNull(req.avatarUrl()));
 
         // 4. Заменяем амплуа целиком
         profile.setPositions(new HashSet<>(req.positions()));

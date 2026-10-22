@@ -19,5 +19,11 @@ public enum NotificationType {
     /** Участник исключён из команды. */
     EXCLUDED,
     /** Команда архивирована. */
-    ARCHIVED
+    ARCHIVED,
+    EVENT_CREATED,
+    EVENT_UPDATED,
+    EVENT_CANCELLED,
+    ROSTER_ADDED,
+    ROSTER_REMOVED,
+    TRAINER_ASSIGNED
 }

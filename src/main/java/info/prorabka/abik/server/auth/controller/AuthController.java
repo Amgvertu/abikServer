@@ -130,6 +130,22 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Вы вышли из системы"));
     }
 
+    @Operation(summary = "Запрос кода для сброса пароля")
+    @PostMapping("/password-reset/start")
+    public ResponseEntity<Map<String, String>> passwordResetStart(
+            @Valid @RequestBody PasswordResetStartRequest req) {
+        authService.passwordResetStart(req);
+        return ResponseEntity.ok(Map.of("message", "Если номер зарегистрирован, код отправлен"));
+    }
+
+    @Operation(summary = "Подтверждение сброса пароля")
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<Map<String, String>> passwordResetConfirm(
+            @Valid @RequestBody PasswordResetConfirmRequest req) {
+        authService.passwordResetConfirm(req);
+        return ResponseEntity.ok(Map.of("message", "Пароль изменён"));
+    }
+
     private String extractClientIp(HttpServletRequest request) {
         String xff = request.getHeader("X-Forwarded-For");
         if (xff != null && !xff.isBlank()) {

@@ -34,6 +34,9 @@ public class Payment {
     @Column(length = 500)
     private String description;
 
+    @Column(name = "paid_at", nullable = false)
+    private java.time.LocalDate paidAt;
+
     /** Кто внёс (владелец/модератор). */
     @Column(name = "created_by_user_id", nullable = false)
     private Long createdByUserId;
@@ -53,6 +56,7 @@ public class Payment {
         OffsetDateTime now = OffsetDateTime.now();
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
+        if (paidAt == null) paidAt = java.time.LocalDate.now();
     }
 
     @PreUpdate

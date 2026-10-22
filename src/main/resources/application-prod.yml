@@ -17,9 +17,12 @@ logging:
     name: /home/amgvertu/projects/abik/logs/abik.log
 
 app:
+  files:
+    dir: "/home/amgvertu/projects/abik/uploads"
   push:
     rustore:
       project-id: ${RUSTORE_PROJECT_ID:}
       service-token: ${RUSTORE_SERVICE_TOKEN:}
     fcm:
       service-account-path: "file:/home/amgvertu/projects/abik/config/firebase-service-account.json"
+      enabled: true

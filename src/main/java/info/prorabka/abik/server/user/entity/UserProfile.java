@@ -60,6 +60,9 @@ public class UserProfile {
     @Column(name = "gaiters_size", length = 20)
     private String gaitersSize;
 
+    @Column(name = "avatar_url", length = 500)
+    private String avatarUrl;
+
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
