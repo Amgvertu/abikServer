@@ -1,7 +1,7 @@
 server:
   port: 8083
   servlet:
-    context-path: /api
+    context-path: /api/abik
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/abik
