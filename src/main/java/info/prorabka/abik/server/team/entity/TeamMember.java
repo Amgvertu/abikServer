@@ -54,5 +54,6 @@ public class TeamMember {
     void onCreate() {
         if (joinedAt == null) joinedAt = OffsetDateTime.now();
         if (status == null) status = MemberStatus.ACTIVE;
+        if (isTrainer == null) isTrainer = false;
     }
 }
