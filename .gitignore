@@ -1,43 +1,49 @@
-HELP.md
-.gradle
+# ---------- Android / Gradle ----------
+# Артефакты сборки
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+**/build/
+outputs/
+*.apk
+*.aab
+*.dex
+*.class
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
+# Gradle
+.gradle/
+gradle-app.setting
+.gradletasknamecache
 
-### IntelliJ IDEA ###
-.idea
-*.iws
+# Локальная конфигурация машины (пути к SDK и т.п.)
+local.properties
+
+# Ключи подписи
+*.keystore
+*.jks
+*.pem
+
+# ---------- Android Studio / IntelliJ ----------
+.idea/
 *.iml
 *.ipr
-out/
-!**/src/main/**/out/
-!**/src/test/**/out/
+*.iws
+.cxx/
+.externalNativeBuild/
+.navigation/
+captures/
+output.json
 
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
+# ---------- Kotlin / Java ----------
+*.hprof
+*.log
 
-### VS Code ###
-.vscode/
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Локальные дампы и логи
-abikServer.txt
-*.txt
+# ---------- Временное ----------
+*.tmp
+*.swp
+*~
 
 firebase-service-account.json

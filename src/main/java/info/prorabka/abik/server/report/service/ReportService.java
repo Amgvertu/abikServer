@@ -8,6 +8,7 @@ import info.prorabka.abik.server.charge.service.ChargeGroupService;
 import info.prorabka.abik.server.payment.entity.Balance;
 import info.prorabka.abik.server.payment.repository.BalanceRepository;
 import info.prorabka.abik.server.payment.repository.PaymentRepository;
+import info.prorabka.abik.server.payment.service.BalanceService;
 import info.prorabka.abik.server.report.dto.ChargeSummaryResponse;
 import info.prorabka.abik.server.report.dto.MemberSummaryResponse;
 import info.prorabka.abik.server.report.dto.ReportFilterRequest;
@@ -53,6 +54,7 @@ public class ReportService {
     private final TeamMemberService teamMemberService;
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
+    private final BalanceService balanceService;
 
     public ReportService(ChargeRepository chargeRepository,
                          ChargeGroupService chargeGroupService,
@@ -61,7 +63,8 @@ public class ReportService {
                          TeamMemberRepository teamMemberRepository,
                          TeamMemberService teamMemberService,
                          UserRepository userRepository,
-                         UserProfileRepository userProfileRepository) {
+                         UserProfileRepository userProfileRepository,
+                         BalanceService balanceService) {
         this.chargeRepository = chargeRepository;
         this.chargeGroupService = chargeGroupService;
         this.paymentRepository = paymentRepository;
@@ -70,6 +73,7 @@ public class ReportService {
         this.teamMemberService = teamMemberService;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
+        this.balanceService = balanceService;
     }
 
     // ============================================================
@@ -153,10 +157,7 @@ public class ReportService {
             String firstName = profile != null ? profile.getFirstName() : null;
             String phone = user != null ? user.getPhone() : null;
 
-            // Платежи
-            long paid = paymentRepository.sumActiveByTeamAndUser(teamId, userId);
-
-            // Долги (ACTIVE + PARTIALLY_PAID)
+            // Агрегаты по открытым долгам (ACTIVE + PARTIALLY_PAID) — для колонок сводки
             List<Charge> debts = chargeRepository
                     .findByTeamIdAndUserIdAndStatusInOrderByDueDateAscIdAsc(
                             teamId, userId,
@@ -171,7 +172,8 @@ public class ReportService {
                 totalRemaining += c.remainingKopecks();
             }
 
-            long balance = paid - totalRemaining;
+            // Баланс — строго по единой формуле из BalanceService (ТЗ 6.1)
+            long balance = balanceService.getRawBalance(teamId, userId);
 
             result.add(new MemberSummaryResponse(
                     userId, lastName, firstName, phone,

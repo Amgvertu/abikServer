@@ -286,17 +286,17 @@ public class PaymentService {
         List<Payment> payments;
         if (filter.userId() != null) {
             payments = paymentRepository
-                    .findByTeamIdAndUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(teamId, filter.userId());
+                    .findByTeamIdAndUserIdAndDeletedAtIsNullOrderByPaidAtDescIdDesc(teamId, filter.userId());
         } else {
             payments = paymentRepository
-                    .findByTeamIdAndDeletedAtIsNullOrderByCreatedAtDesc(teamId);
+                    .findByTeamIdAndDeletedAtIsNullOrderByPaidAtDescIdDesc(teamId);
         }
 
         return payments.stream()
                 .filter(p -> filter.dateFrom() == null
-                        || !p.getCreatedAt().toLocalDate().isBefore(filter.dateFrom()))
+                        || !p.getPaidAt().isBefore(filter.dateFrom()))
                 .filter(p -> filter.dateTo() == null
-                        || !p.getCreatedAt().toLocalDate().isAfter(filter.dateTo()))
+                        || !p.getPaidAt().isAfter(filter.dateTo()))
                 .filter(p -> filter.amountMinKopecks() == null
                         || p.getAmountKopecks() >= filter.amountMinKopecks())
                 .filter(p -> filter.amountMaxKopecks() == null

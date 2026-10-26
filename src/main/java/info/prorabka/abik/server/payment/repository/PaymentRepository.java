@@ -10,12 +10,11 @@ import java.util.Optional;
 @Repository
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
 
-    /** Активные платежи команды, свежие сверху. */
-    List<Payment> findByTeamIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long teamId);
+    /** Активные платежи команды: по дате оплаты (свежие сверху), затем по id. */
+    List<Payment> findByTeamIdAndDeletedAtIsNullOrderByPaidAtDescIdDesc(Long teamId);
 
-    /** Активные платежи конкретного участника. */
-    List<Payment> findByTeamIdAndUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Long teamId, Long userId);
-
+    /** Активные платежи конкретного участника: по дате оплаты, затем по id. */
+    List<Payment> findByTeamIdAndUserIdAndDeletedAtIsNullOrderByPaidAtDescIdDesc(Long teamId, Long userId);
     /** Один активный платёж. */
     Optional<Payment> findByIdAndDeletedAtIsNull(Long id);
 

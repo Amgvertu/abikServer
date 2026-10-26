@@ -14,6 +14,9 @@ public interface ChargeRepository extends JpaRepository<Charge, Long> {
     /** Начисления команды, свежие сверху. */
     List<Charge> findByTeamIdOrderByCreatedAtDesc(Long teamId);
 
+    /** Начисления команды по сроку оплаты: ближайшие сверху, затем по id. */
+    List<Charge> findByTeamIdOrderByDueDateAscIdAsc(Long teamId);
+
     /** Начисления пользователя в команде. */
     List<Charge> findByTeamIdAndUserIdOrderByCreatedAtDesc(Long teamId, Long userId);
 

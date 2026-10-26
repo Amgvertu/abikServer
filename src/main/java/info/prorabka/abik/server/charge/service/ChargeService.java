@@ -135,10 +135,14 @@ public class ChargeService {
         }
 
         // Делим сумму поровну, округляя вверх до 100 ₽
-        long amountPerUser = roundUpTo100Rub(req.amountKopecks() / req.userIds().size());
+        /*long amountPerUser = roundUpTo100Rub(req.amountKopecks() / req.userIds().size());
         if (amountPerUser <= 0) {
             amountPerUser = ROUNDING_KOPECKS; // минимум 100 ₽
-        }
+        }*/
+
+        // По ТЗ (6.2): введённая сумма назначается КАЖДОМУ выбранному участнику
+        // целиком — не делится между ними и не округляется
+        long amountPerUser = req.amountKopecks();
 
         List<Charge> created = new ArrayList<>();
         for (Long userId : req.userIds()) {
@@ -175,7 +179,7 @@ public class ChargeService {
     public List<ChargeResponse> listCharges(Long teamId, Long actorUserId, ChargeFilterRequest filter) {
         teamMemberService.requireMember(teamId, actorUserId);
 
-        List<Charge> charges = chargeRepository.findByTeamIdOrderByCreatedAtDesc(teamId);
+        List<Charge> charges = chargeRepository.findByTeamIdOrderByDueDateAscIdAsc(teamId);
 
         return charges.stream()
                 .filter(c -> filter.userId() == null || c.getUserId().equals(filter.userId()))
@@ -337,7 +341,6 @@ public class ChargeService {
         return totalCreated;
     }
 
-    /** Генерация для одной команды. */
     /** Генерация для одной команды. */
     private int generateForTeam(Team team, LocalDate today) {
         // Локальная дата команды

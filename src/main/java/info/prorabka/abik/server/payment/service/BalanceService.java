@@ -4,6 +4,7 @@ import info.prorabka.abik.server.charge.entity.Charge;
 import info.prorabka.abik.server.charge.entity.ChargeStatus;
 import info.prorabka.abik.server.charge.repository.ChargeRepository;
 import info.prorabka.abik.server.common.exception.BadRequestException;
+import info.prorabka.abik.server.common.exception.NotFoundException;
 import info.prorabka.abik.server.payment.dto.BalanceAdjustmentRequest;
 import info.prorabka.abik.server.payment.dto.BalanceAdjustmentResponse;
 import info.prorabka.abik.server.payment.dto.BalanceResponse;
@@ -17,6 +18,7 @@ import info.prorabka.abik.server.team.entity.MemberStatus;
 import info.prorabka.abik.server.team.repository.TeamMemberRepository;
 import info.prorabka.abik.server.team.service.TeamMemberService;
 import info.prorabka.abik.server.user.repository.UserProfileRepository;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -118,6 +120,9 @@ public class BalanceService {
     @Transactional
     public BalanceResponse getBalance(Long teamId, Long targetUserId, Long actorUserId) {
         teamMemberService.requireMember(teamId, actorUserId);
+        // Целевой пользователь должен числиться в команде (любой статус членства)
+        teamMemberRepository.findByTeamIdAndUserId(teamId, targetUserId)
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден в команде"));
 
         Balance balance = recalculate(teamId, targetUserId);
 
@@ -174,19 +179,19 @@ public class BalanceService {
     // ============================================================
 
     /**
-     * Сумма активных долгов пользователя.
-     * ACTIVE и PARTIALLY_PAID — считаются долгом.
-     * PAID, CANCELLED, ARCHIVED — не считаются.
+     * Сумма ПОЛНОЙ стоимости начислений пользователя (по ТЗ, раздел 6.1).
+     * Учитываются статусы ACTIVE, PARTIALLY_PAID и PAID — по полной сумме amountKopecks.
+     * CANCELLED и ARCHIVED не учитываются.
      */
     private long sumActiveCharges(Long teamId, Long userId) {
         List<Charge> charges = chargeRepository
                 .findByTeamIdAndUserIdAndStatusInOrderByDueDateAscIdAsc(
                         teamId, userId,
-                        List.of(ChargeStatus.ACTIVE, ChargeStatus.PARTIALLY_PAID));
+                        List.of(ChargeStatus.ACTIVE, ChargeStatus.PARTIALLY_PAID, ChargeStatus.PAID));
 
         long total = 0;
         for (Charge c : charges) {
-            total += c.remainingKopecks();
+            total += c.getAmountKopecks();
         }
         return total;
     }
