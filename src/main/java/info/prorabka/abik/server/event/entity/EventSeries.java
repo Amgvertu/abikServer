@@ -3,6 +3,7 @@ package info.prorabka.abik.server.event.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 
 @Entity
@@ -16,6 +17,13 @@ public class EventSeries {
 
     @Column(name = "team_id", nullable = false)
     private Long teamId;
+
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EventSection section;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -34,8 +42,9 @@ public class EventSeries {
     @Column(name = "weekdays", nullable = false, columnDefinition = "smallint[]")
     private Short[] weekdays;
 
-    @Column(name = "weeks_ahead", nullable = false)
-    private Integer weeksAhead;
+    /** Дата окончания повторения (включительно). */
+    @Column(name = "until_date", nullable = false)
+    private LocalDate untilDate;
 
     @Column(name = "created_by", nullable = false)
     private Long createdBy;

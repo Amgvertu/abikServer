@@ -21,6 +21,13 @@ public class Event {
     @Column(name = "series_id")
     private Long seriesId;
 
+    @Column(nullable = false, length = 200)
+    private String title;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EventSection section;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private EventType type;

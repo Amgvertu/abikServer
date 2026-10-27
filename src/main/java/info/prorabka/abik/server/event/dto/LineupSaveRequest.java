@@ -1,13 +1,10 @@
 package info.prorabka.abik.server.event.dto;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+
 import java.util.List;
 
 public record LineupSaveRequest(
-        Long goalkeeperId,
-        List<LineSaveItem> lines
-) {
-    public record LineSaveItem(
-            List<Long> defenderIds,
-            List<Long> forwardIds
-    ) {}
-}
+        @NotNull List<@Valid LineupSlotDto> slots
+) {}

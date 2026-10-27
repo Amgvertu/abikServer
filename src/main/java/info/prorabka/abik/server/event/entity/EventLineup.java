@@ -22,6 +22,11 @@ public class EventLineup {
     @Column(nullable = false, length = 20)
     private LineupRole role;
 
+    /** Номер звена (null для вратаря). */
     @Column(name = "line_number")
     private Short lineNumber;
+
+    /** Номер слота внутри позиции: вратарь — 1; защитники — 1..2; нападающие — 1..3. */
+    @Column(name = "slot_number", nullable = false)
+    private Short slotNumber;
 }

@@ -214,6 +214,40 @@ public class NotificationService {
     }
 
     // ============================================================
+    // События (BE-13)
+    // ============================================================
+
+    @Transactional
+    public void notifyEventCreated(Long userId, Long teamId, String teamName,
+                                   Long eventId, String eventTitle, String when) {
+        send(userId, NotificationType.EVENT_CREATED,
+                "Новое событие",
+                "В команде «" + teamName + "»: " + eventTitle + " — " + when,
+                teamId,
+                Map.of("teamId", teamId, "eventId", eventId));
+    }
+
+    @Transactional
+    public void notifyEventUpdated(Long userId, Long teamId, String teamName,
+                                   Long eventId, String eventTitle, String when) {
+        send(userId, NotificationType.EVENT_UPDATED,
+                "Событие изменено",
+                "В команде «" + teamName + "»: " + eventTitle + " — " + when,
+                teamId,
+                Map.of("teamId", teamId, "eventId", eventId));
+    }
+
+    @Transactional
+    public void notifyEventCancelled(Long userId, Long teamId, String teamName,
+                                     Long eventId, String eventTitle, String when) {
+        send(userId, NotificationType.EVENT_CANCELLED,
+                "Событие отменено",
+                "В команде «" + teamName + "» отменено: " + eventTitle + " — " + when,
+                teamId,
+                Map.of("teamId", teamId, "eventId", eventId));
+    }
+
+    // ============================================================
     // Helpers
     // ============================================================
 
