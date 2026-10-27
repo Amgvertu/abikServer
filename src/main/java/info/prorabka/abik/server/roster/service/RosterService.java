@@ -45,13 +45,45 @@ public class RosterService {
         this.chargeService = chargeService;
     }
 
-    public List<String> listSeasons(Long teamId, Long actor) {
+    public List<SeasonResponse> listSeasons(Long teamId, Long actor) {
         teamMemberService.requireMember(teamId, actor);
         Set<String> seasons = new LinkedHashSet<>(repo.findDistinctSeasonsByTeamId(teamId));
-        teamRepo.findById(teamId).map(Team::getSeason).ifPresent(s -> {
-            if (s != null && !s.isBlank()) seasons.add(s);
-        });
-        return new ArrayList<>(seasons);
+        String current = teamRepo.findById(teamId).map(Team::getSeason).orElse(null);
+        if (current != null && !current.isBlank()) seasons.add(current);
+        // Стабильная сортировка: по убыванию (новые сезоны первыми)
+        List<String> sorted = new ArrayList<>(seasons);
+        sorted.sort(Comparator.reverseOrder());
+        List<SeasonResponse> result = new ArrayList<>();
+        for (String s : sorted) {
+            result.add(new SeasonResponse(s, s.equals(current)));
+        }
+        return result;
+    }
+
+    /**
+     * Архивный сезон защищён от изменений.
+     * Текущий сезон = поле season команды. Если у команды сезон не заполнен,
+     * запись разрешаем (иначе нельзя завести первый состав).
+     */
+    private void requireWritableSeason(Long teamId, String season) {
+        String current = teamRepo.findById(teamId).map(Team::getSeason).orElse(null);
+        if (current != null && !current.isBlank() && !current.equals(season)) {
+            throw new info.prorabka.abik.server.common.exception.BadRequestException(
+                    "Сезон " + season + " архивный: изменения запрещены. Текущий сезон: " + current);
+        }
+    }
+
+    /**
+     * Проверить, что пользователь — активный участник команды.
+     * Иначе — 400 (не 403: ошибка в данных запроса, а не в правах актора).
+     */
+    private void requireActiveMemberOfTeam(Long teamId, Long userId) {
+        try {
+            teamMemberService.requireMember(teamId, userId);
+        } catch (RuntimeException e) {
+            throw new info.prorabka.abik.server.common.exception.BadRequestException(
+                    "Пользователь не является активным участником команды: userId=" + userId);
+        }
     }
 
     public List<RosterItemResponse> listRoster(Long teamId, String season, Long actor) {
@@ -79,6 +111,11 @@ public class RosterService {
         if (m.getRole() != MemberRole.OWNER && m.getRole() != MemberRole.ADMIN) {
             throw new info.prorabka.abik.server.common.exception.ForbiddenException(
                     "Изменять состав может только владелец или админ");
+        }
+        requireWritableSeason(teamId, season);
+        // В состав можно добавлять только активных участников команды
+        for (Long uid : req.userIds()) {
+            requireActiveMemberOfTeam(teamId, uid);
         }
 
         List<ChampionshipRoster> existing = repo
@@ -118,10 +155,26 @@ public class RosterService {
             throw new info.prorabka.abik.server.common.exception.ForbiddenException(
                     "Добавлять игроков может только владелец или админ");
         }
+        requireWritableSeason(teamId, season);
+        requireActiveMemberOfTeam(teamId, req.userId());
 
-        ChampionshipRoster r = repo.findByTeamIdAndSeasonAndUserId(teamId, season, req.userId())
-                .orElseGet(() -> ChampionshipRoster.builder()
-                        .teamId(teamId).season(season).userId(req.userId()).build());
+        ChampionshipRoster existing = repo
+                .findByTeamIdAndSeasonAndUserId(teamId, season, req.userId())
+                .orElse(null);
+
+        // Идемпотентность: игрок уже активен в составе — ничего не меняем,
+        // повторный стартовый взнос НЕ создаём.
+        if (existing != null && "ACTIVE".equals(existing.getStatus())) {
+            log.info("Игрок уже в составе, повторное добавление проигнорировано: "
+                    + "teamId={}, season={}, userId={}", teamId, season, req.userId());
+            return listRoster(teamId, season, actor).stream()
+                    .filter(i -> i.userId().equals(req.userId()))
+                    .findFirst().orElseThrow(() -> new NotFoundException("Не найден в составе"));
+        }
+
+        ChampionshipRoster r = existing != null ? existing
+                : ChampionshipRoster.builder()
+                .teamId(teamId).season(season).userId(req.userId()).build();
         r.setStatus("ACTIVE");
         r.setRemovedAt(null);
         r.setAddedAt(OffsetDateTime.now());
@@ -153,6 +206,7 @@ public class RosterService {
             throw new info.prorabka.abik.server.common.exception.ForbiddenException(
                     "Убирать игроков может только владелец или админ");
         }
+        requireWritableSeason(teamId, season);
         ChampionshipRoster r = repo.findByTeamIdAndSeasonAndUserId(teamId, season, userId)
                 .orElseThrow(() -> new NotFoundException("Игрок не в составе"));
         r.setStatus("REMOVED");

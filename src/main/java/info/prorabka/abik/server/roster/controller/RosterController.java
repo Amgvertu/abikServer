@@ -25,9 +25,9 @@ public class RosterController {
         this.service = service;
     }
 
-    @Operation(summary = "Список сезонов")
+    @Operation(summary = "Список сезонов (с признаком текущего)")
     @GetMapping
-    public ResponseEntity<List<String>> seasons(@PathVariable Long teamId) {
+    public ResponseEntity<List<SeasonResponse>> seasons(@PathVariable Long teamId) {
         Long actor = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(service.listSeasons(teamId, actor));
     }
