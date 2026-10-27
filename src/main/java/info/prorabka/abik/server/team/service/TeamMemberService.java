@@ -3,9 +3,12 @@ package info.prorabka.abik.server.team.service;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
 import info.prorabka.abik.server.notification.service.NotificationService;
+import info.prorabka.abik.server.team.dto.MemberDetailsResponse;
 import info.prorabka.abik.server.team.dto.SetJerseyNumberRequest;
 import info.prorabka.abik.server.team.dto.TeamMemberResponse;
 import info.prorabka.abik.server.team.dto.UpdateMemberRoleRequest;
+import info.prorabka.abik.server.user.dto.UserProfileResponse;
+import info.prorabka.abik.server.user.service.UserProfileService;
 import info.prorabka.abik.server.team.entity.*;
 import info.prorabka.abik.server.team.repository.TeamMemberRepository;
 import info.prorabka.abik.server.user.entity.User;
@@ -31,15 +34,18 @@ public class TeamMemberService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final NotificationService notificationService;
+    private final UserProfileService userProfileService;
 
     public TeamMemberService(TeamMemberRepository teamMemberRepository,
                              UserRepository userRepository,
                              UserProfileRepository userProfileRepository,
-                             NotificationService notificationService) {
+                             NotificationService notificationService,
+                             UserProfileService userProfileService) {
         this.teamMemberRepository = teamMemberRepository;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
-        this.notificationService=notificationService;
+        this.notificationService = notificationService;
+        this.userProfileService = userProfileService;
     }
 
     // ============================================================
@@ -293,5 +299,42 @@ public class TeamMemberService {
         notificationService.notifyRoleChanged(targetUserId, teamId,
                 "команда #" + teamId, isTrainer ? "TRAINER" : "не тренер");
         return toResponse(saved);
+    }
+
+    // ============================================================
+    // Защищённая карточка участника (ТЗ 9.2, BE-07)
+    // ============================================================
+
+    /**
+     * Карточка участника в контексте команды.
+     * Доступ: любой активный участник той же команды (посторонний — 403).
+     * Цель — участник команды в любом статусе: карточка исключённого нужна
+     * управляющим, т.к. его долги и платежи сохраняются.
+     * Профиль может отсутствовать — тогда profile = null.
+     */
+    public MemberDetailsResponse getMemberDetails(Long teamId, Long targetUserId, Long actorUserId) {
+        requireMember(teamId, actorUserId);
+
+        TeamMember target = teamMemberRepository
+                .findByTeamIdAndUserId(teamId, targetUserId)
+                .orElseThrow(() -> new NotFoundException("Участник не найден в команде"));
+
+        User user = userRepository.findById(targetUserId)
+                .orElseThrow(() -> new NotFoundException("Пользователь не найден"));
+
+        UserProfileResponse profile = userProfileService.exists(targetUserId)
+                ? userProfileService.getByUserId(targetUserId)
+                : null;
+
+        return new MemberDetailsResponse(
+                target.getUserId(),
+                user.getPhone(),
+                target.getRole(),
+                target.getStatus(),
+                target.getJerseyNumber(),
+                target.getIsTrainer(),
+                target.getJoinedAt(),
+                profile
+        );
     }
 }

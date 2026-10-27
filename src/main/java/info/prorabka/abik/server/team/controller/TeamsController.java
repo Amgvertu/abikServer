@@ -38,7 +38,6 @@ import java.util.Map;
              """)
 @SecurityRequirement(name = "bearerAuth")
 public class TeamsController {
-
     private final TeamService teamService;
     private final TeamMemberService teamMemberService;
     private final TeamInvitationService teamInvitationService;
@@ -181,6 +180,30 @@ public class TeamsController {
     // ============================================================
     // Участники
     // ============================================================
+
+    @Operation(summary = "Карточка участника",
+            description = """
+                    Team-scoped карточка участника (ТЗ 9.2): телефон, роль, статус членства,
+                    игровой номер, признак тренера и профиль (ФИО, аватарка, амплуа,
+                    регион/город, рост/вес, хват, размеры экипировки).
+
+                    **Доступ:** активные участники той же команды.
+                    Если профиль не заполнен — поле `profile` равно null.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Карточка участника",
+                    content = @Content(schema = @Schema(implementation = MemberDetailsResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Вы не участник этой команды"),
+            @ApiResponse(responseCode = "404", description = "Участник не найден в команде")
+    })
+    @GetMapping("/{teamId}/members/{targetUserId}")
+    public ResponseEntity<MemberDetailsResponse> memberDetails(
+            @Parameter(description = "ID команды", example = "1") @PathVariable Long teamId,
+            @Parameter(description = "ID участника", example = "1") @PathVariable Long targetUserId) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(teamMemberService.getMemberDetails(teamId, targetUserId, actor));
+    }
+
 
     @Operation(
             summary = "Список участников",
