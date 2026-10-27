@@ -9,6 +9,7 @@ import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
 import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.payment.service.PaymentService;
+import info.prorabka.abik.server.payment.service.BalanceService;
 import info.prorabka.abik.server.team.entity.MemberStatus;
 import info.prorabka.abik.server.team.entity.Team;
 import info.prorabka.abik.server.team.entity.TeamStatus;
@@ -62,6 +63,7 @@ public class ChargeService {
     private final ChargeTemplateRepository templateRepository;
     private final RegionRepository regionRepository;
     private final PaymentService paymentService;
+    private final BalanceService balanceService;
     private final NotificationService notificationService;
 
 
@@ -76,7 +78,8 @@ public class ChargeService {
                          ChargeTemplateRepository templateRepository,
                          RegionRepository regionRepository,
                          PaymentService paymentService,
-                         NotificationService notificationService) {          // ⬅️ новый параметр
+                         BalanceService balanceService,
+                         NotificationService notificationService) {
         this.chargeRepository = chargeRepository;
         this.subgroupRepository = subgroupRepository;
         this.groupService = groupService;
@@ -88,7 +91,8 @@ public class ChargeService {
         this.templateRepository = templateRepository;
         this.regionRepository = regionRepository;
         this.paymentService = paymentService;
-        this.notificationService = notificationService;// ⬅️ новая строка
+        this.balanceService = balanceService;
+        this.notificationService = notificationService;
     }
 
     // ============================================================
@@ -245,6 +249,107 @@ public class ChargeService {
         log.info("Начисление отменено: chargeId={}, actor={}, reason={}",
                 chargeId, actorUserId, req.reason());
         return toResponse(saved);
+    }
+
+// ============================================================
+    // Редактирование и удаление (ТЗ 7.1)
+    // ============================================================
+
+    /**
+     * Редактировать начисление.
+     * Можно менять группу/подгруппу, сумму, комментарий и дату.
+     * Ограничения:
+     *  - нельзя править CANCELLED и ARCHIVED;
+     *  - новая сумма не может быть меньше уже оплаченной (paidKopecks);
+     *  - после смены суммы статус пересчитывается (ACTIVE / PARTIALLY_PAID / PAID).
+     * Участника начисление не меняет — для переноса начисление отменяют и создают новое.
+     */
+    @Transactional
+    public ChargeResponse update(Long teamId, Long chargeId, Long actorUserId,
+                                 ChargeUpdateRequest req) {
+        teamMemberService.requireManager(teamId, actorUserId);
+
+        Charge charge = getChargeOrThrow(chargeId);
+        if (!charge.getTeamId().equals(teamId)) {
+            throw new ForbiddenException("Начисление принадлежит другой команде");
+        }
+        if (charge.getStatus() == ChargeStatus.CANCELLED) {
+            throw new BadRequestException("Начисление отменено — редактирование невозможно");
+        }
+        if (charge.getStatus() == ChargeStatus.ARCHIVED) {
+            throw new BadRequestException("Начисление в архиве — редактирование невозможно");
+        }
+        if (req.amountKopecks() < charge.getPaidKopecks()) {
+            throw new BadRequestException(
+                    "Новая сумма меньше уже оплаченной (" + charge.getPaidKopecks() + " коп.)");
+        }
+
+        // Проверка группы
+        ChargeGroup group = groupService.getGroupOrThrow(req.groupId());
+        if (!group.getTeamId().equals(teamId)) {
+            throw new ForbiddenException("Группа принадлежит другой команде");
+        }
+
+        // Проверка подгруппы
+        Long subgroupId = null;
+        if (req.subgroupId() != null) {
+            ChargeSubgroup subgroup = groupService.getSubgroupOrThrow(req.subgroupId());
+            if (!subgroup.getGroupId().equals(group.getId())) {
+                throw new BadRequestException("Подгруппа не принадлежит указанной группе");
+            }
+            subgroupId = subgroup.getId();
+        }
+
+        charge.setGroupId(group.getId());
+        charge.setSubgroupId(subgroupId);
+        charge.setAmountKopecks(req.amountKopecks());
+        charge.setDescription(trimOrNull(req.description()));
+        charge.setDueDate(req.dueDate());
+
+        // Пересчёт статуса от новой суммы
+        if (charge.getPaidKopecks() >= charge.getAmountKopecks()) {
+            charge.setStatus(ChargeStatus.PAID);
+        } else if (charge.getPaidKopecks() > 0) {
+            charge.setStatus(ChargeStatus.PARTIALLY_PAID);
+        } else {
+            charge.setStatus(ChargeStatus.ACTIVE);
+        }
+
+        Charge saved = chargeRepository.save(charge);
+        balanceService.recalculate(teamId, saved.getUserId());
+
+        log.info("Начисление изменено: chargeId={}, actor={}, сумма={} копеек",
+                chargeId, actorUserId, req.amountKopecks());
+        return toResponse(saved);
+    }
+
+    /**
+     * Удалить начисление безвозвратно.
+     * Разрешено, только если по нему не было оплат (paidKopecks == 0) —
+     * иначе используйте отмену с причиной (деньги должны перераспределиться).
+     * Отменённые начисления удалять можно (их paid обнуляется при отмене).
+     */
+    @Transactional
+    public void delete(Long teamId, Long chargeId, Long actorUserId) {
+        teamMemberService.requireManager(teamId, actorUserId);
+
+        Charge charge = getChargeOrThrow(chargeId);
+        if (!charge.getTeamId().equals(teamId)) {
+            throw new ForbiddenException("Начисление принадлежит другой команде");
+        }
+        if (charge.getStatus() == ChargeStatus.ARCHIVED) {
+            throw new BadRequestException("Начисление в архиве — удаление невозможно");
+        }
+        if (charge.getPaidKopecks() > 0) {
+            throw new BadRequestException(
+                    "По начислению есть оплаты — используйте отмену с причиной");
+        }
+
+        Long userId = charge.getUserId();
+        chargeRepository.delete(charge);
+        balanceService.recalculate(teamId, userId);
+
+        log.info("Начисление удалено: chargeId={}, actor={}", chargeId, actorUserId);
     }
 
     // ============================================================

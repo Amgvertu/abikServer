@@ -142,4 +142,54 @@ public class ChargesController {
         Long actor = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(chargeService.cancel(teamId, chargeId, actor, req));
     }
+
+    @Operation(summary = "Редактировать начисление",
+            description = """
+                    Меняет группу/подгруппу, сумму, комментарий и дату начисления.
+
+                    **Ограничения:**
+                    - нельзя править отменённые (CANCELLED) и архивные (ARCHIVED);
+                    - новая сумма не может быть меньше уже оплаченной;
+                    - участник не меняется (для переноса — отменить и создать новое).
+
+                    **Права:** владелец/модератор.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Начисление обновлено",
+                    content = @Content(schema = @Schema(implementation = ChargeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Ошибка валидации или запрет по статусу/сумме"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Начисление не найдено")
+    })
+    @PutMapping("/{chargeId}")
+    public ResponseEntity<ChargeResponse> update(
+            @Parameter(description = "ID команды", example = "1") @PathVariable Long teamId,
+            @Parameter(description = "ID начисления", example = "1") @PathVariable Long chargeId,
+            @Valid @RequestBody ChargeUpdateRequest req) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(chargeService.update(teamId, chargeId, actor, req));
+    }
+
+    @Operation(summary = "Удалить начисление",
+            description = """
+                    Безвозвратно удаляет начисление. Разрешено, только если по нему
+                    не было оплат. Если оплаты были — используйте отмену с причиной
+                    (POST /{chargeId}/cancel), деньги перераспределятся на другие долги.
+
+                    **Права:** владелец/модератор.
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Начисление удалено"),
+            @ApiResponse(responseCode = "400", description = "Есть оплаты или начисление в архиве"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Начисление не найдено")
+    })
+    @DeleteMapping("/{chargeId}")
+    public ResponseEntity<Void> delete(
+            @Parameter(description = "ID команды", example = "1") @PathVariable Long teamId,
+            @Parameter(description = "ID начисления", example = "1") @PathVariable Long chargeId) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        chargeService.delete(teamId, chargeId, actor);
+        return ResponseEntity.noContent().build();
+    }
 }
