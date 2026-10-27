@@ -33,17 +33,17 @@ public class RosterController {
     }
 
     @Operation(summary = "Состав сезона")
-    @GetMapping("/{season}/roster")
+    @GetMapping("/roster")
     public ResponseEntity<List<RosterItemResponse>> roster(
-            @PathVariable Long teamId, @PathVariable String season) {
+            @PathVariable Long teamId, @RequestParam String season) {
         Long actor = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(service.listRoster(teamId, season, actor));
     }
 
     @Operation(summary = "Полная замена состава")
-    @PutMapping("/{season}/roster")
+    @PutMapping("/roster")
     public ResponseEntity<Map<String, String>> replace(
-            @PathVariable Long teamId, @PathVariable String season,
+            @PathVariable Long teamId, @RequestParam String season,
             @Valid @RequestBody RosterReplaceRequest req) {
         Long actor = SecurityUtils.getCurrentUserId();
         service.replaceRoster(teamId, season, actor, req);
@@ -51,19 +51,20 @@ public class RosterController {
     }
 
     @Operation(summary = "Добавить игрока (опционально — со стартовым взносом)")
-    @PostMapping("/{season}/roster/members")
+    @PostMapping("/roster/members")
     public ResponseEntity<RosterItemResponse> add(
-            @PathVariable Long teamId, @PathVariable String season,
+            @PathVariable Long teamId, @RequestParam String season,
             @Valid @RequestBody RosterAddRequest req) {
         Long actor = SecurityUtils.getCurrentUserId();
         return ResponseEntity.ok(service.addMember(teamId, season, actor, req));
     }
 
     @Operation(summary = "Убрать игрока из состава")
-    @DeleteMapping("/{season}/roster/members/{userId}")
+    @DeleteMapping("/roster/members/{userId}")
     public ResponseEntity<Map<String, String>> remove(
-            @PathVariable Long teamId, @PathVariable String season,
-            @PathVariable Long userId) {
+            @PathVariable Long teamId,
+            @PathVariable Long userId,
+            @RequestParam String season) {
         Long actor = SecurityUtils.getCurrentUserId();
         service.removeMember(teamId, season, userId, actor);
         return ResponseEntity.ok(Map.of("message", "Игрок убран из состава"));
