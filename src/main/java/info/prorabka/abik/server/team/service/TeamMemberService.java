@@ -7,7 +7,9 @@ import info.prorabka.abik.server.team.dto.MemberDetailsResponse;
 import info.prorabka.abik.server.team.dto.SetJerseyNumberRequest;
 import info.prorabka.abik.server.team.dto.TeamMemberResponse;
 import info.prorabka.abik.server.team.dto.UpdateMemberRoleRequest;
+import info.prorabka.abik.server.user.dto.UserProfileRequest;
 import info.prorabka.abik.server.user.dto.UserProfileResponse;
+import info.prorabka.abik.server.user.entity.UserPosition;
 import info.prorabka.abik.server.user.service.UserProfileService;
 import info.prorabka.abik.server.team.entity.*;
 import info.prorabka.abik.server.team.repository.TeamMemberRepository;
@@ -20,7 +22,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Сервис участников команд: роли, статусы, игровые номера, проверки прав.
@@ -259,13 +263,18 @@ public class TeamMemberService {
 
         String lastName = null;
         String firstName = null;
+        Set<UserPosition> positions = Set.of();
+        String avatarUrl = null;
         var profileOpt = userProfileRepository.findById(m.getUserId());
         if (profileOpt.isPresent()) {
-            lastName = profileOpt.get().getLastName();
-            firstName = profileOpt.get().getFirstName();
+            var p = profileOpt.get();
+            lastName = p.getLastName();
+            firstName = p.getFirstName();
+            positions = new HashSet<>(p.getPositions());
+            avatarUrl = p.getAvatarUrl();
         }
 
-        return TeamMemberResponse.from(m, phone, lastName, firstName);
+        return TeamMemberResponse.from(m, phone, lastName, firstName, positions, avatarUrl);
     }
 
     /** Проверить, является ли пользователь суперадмином. */
@@ -336,5 +345,22 @@ public class TeamMemberService {
                 target.getJoinedAt(),
                 profile
         );
+    }
+
+    /**
+     * Редактирование профиля участника управляющим команды (BE-15b).
+     * Доступ: владелец/модератор команды или суперадмин.
+     * Цель — участник команды (в любом статусе членства).
+     * Тело запроса и валидация — те же, что у PUT /v1/users/me/profile.
+     */
+    @Transactional
+    public UserProfileResponse updateMemberProfile(Long teamId, Long targetUserId, Long actorUserId,
+                                                   UserProfileRequest req) {
+        requireManagerOrSuperAdmin(teamId, actorUserId);
+        requireMember(teamId, targetUserId);
+        UserProfileResponse resp = userProfileService.createOrUpdate(targetUserId, req);
+        log.info("Профиль участника обновлён управляющим: teamId={}, targetUserId={}, actor={}",
+                teamId, targetUserId, actorUserId);
+        return resp;
     }
 }

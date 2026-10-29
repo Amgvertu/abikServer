@@ -3,6 +3,8 @@ package info.prorabka.abik.server.team.controller;
 import info.prorabka.abik.server.common.security.SecurityUtils;
 import info.prorabka.abik.server.team.dto.*;
 import info.prorabka.abik.server.team.service.TeamInvitationService;
+import info.prorabka.abik.server.user.dto.UserProfileRequest;
+import info.prorabka.abik.server.user.dto.UserProfileResponse;
 import info.prorabka.abik.server.team.service.TeamMemberService;
 import info.prorabka.abik.server.team.service.TeamService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -387,5 +389,30 @@ public class TeamsController {
         boolean flag = Boolean.TRUE.equals(body.get("isTrainer"));
         return ResponseEntity.ok(
                 teamMemberService.setTrainer(teamId, targetUserId, actorId, flag));
+    }
+
+    @Operation(
+            summary = "Редактировать профиль участника",
+            description = """
+                    Управляющий команды создаёт/обновляет профиль участника (BE-15b).
+                    Тело и валидация — те же, что у PUT /v1/users/me/profile.
+
+                    **Доступ:** владелец или модератор команды (или суперадмин).
+                    """)
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Профиль сохранён",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Ошибка валидации полей профиля"),
+            @ApiResponse(responseCode = "403", description = "Недостаточно прав"),
+            @ApiResponse(responseCode = "404", description = "Участник не найден в команде")
+    })
+    @PutMapping("/{teamId}/members/{targetUserId}/profile")
+    public ResponseEntity<UserProfileResponse> updateMemberProfile(
+            @Parameter(description = "ID команды", example = "1") @PathVariable Long teamId,
+            @Parameter(description = "ID участника", example = "1") @PathVariable Long targetUserId,
+            @Valid @RequestBody UserProfileRequest req) {
+        Long actorId = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(
+                teamMemberService.updateMemberProfile(teamId, targetUserId, actorId, req));
     }
 }
