@@ -20,5 +20,11 @@ public record EventDetailResponse(
         Long seriesId,
         VoteAnswer myVote,
         List<EventVoterDto> voters,
-        LineupDto lineup
+        LineupDto lineup,
+        Integer requiredPlayers,
+        String chargeMode,
+        Long chargeAmountKopecks,
+        String chargeDistribution,
+        Long chargeTemplateId,
+        Boolean charged
 ) {}

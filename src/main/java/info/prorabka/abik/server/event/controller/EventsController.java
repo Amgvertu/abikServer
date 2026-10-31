@@ -2,6 +2,7 @@ package info.prorabka.abik.server.event.controller;
 
 import info.prorabka.abik.server.common.security.SecurityUtils;
 import info.prorabka.abik.server.event.dto.*;
+import info.prorabka.abik.server.event.service.EventChargeService;
 import info.prorabka.abik.server.event.service.EventService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,9 +24,11 @@ import java.util.Map;
 public class EventsController {
 
     private final EventService service;
+    private final EventChargeService eventChargeService;
 
-    public EventsController(EventService service) {
+    public EventsController(EventService service, EventChargeService eventChargeService) {
         this.service = service;
+        this.eventChargeService = eventChargeService;
     }
 
     @Operation(summary = "События команды за период")
@@ -102,5 +105,13 @@ public class EventsController {
         Long actor = SecurityUtils.getCurrentUserId();
         service.setLineup(teamId, eventId, actor, req);
         return ResponseEntity.ok(Map.of("message", "Состав сохранён"));
+    }
+
+    @Operation(summary = "Выполнить начисление за игру по настройкам события")
+    @PostMapping("/{eventId}/charge")
+    public ResponseEntity<Map<String, Object>> charge(
+            @PathVariable Long teamId, @PathVariable Long eventId) {
+        Long actor = SecurityUtils.getCurrentUserId();
+        return ResponseEntity.ok(eventChargeService.chargeForEvent(teamId, eventId, actor));
     }
 }

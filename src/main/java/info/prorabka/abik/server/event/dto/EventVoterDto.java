@@ -12,5 +12,6 @@ public record EventVoterDto(
         VoteAnswer answer,
         Set<UserPosition> positions,
         Boolean isTrainer,
-        SweaterColor sweaterColor
+        SweaterColor sweaterColor,
+        Boolean inReserve
 ) {}

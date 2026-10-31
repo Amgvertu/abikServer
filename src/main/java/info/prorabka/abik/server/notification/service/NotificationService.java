@@ -247,6 +247,17 @@ public class NotificationService {
                 Map.of("teamId", teamId, "eventId", eventId));
     }
 
+    @Transactional
+    public void notifyReservePromoted(Long userId, Long teamId, String teamName,
+                                      Long eventId, String eventTitle, String when) {
+        send(userId, NotificationType.EVENT_UPDATED,
+                "Вы в основном составе",
+                "В команде «" + teamName + "» вы переведены из резерва в основной состав: "
+                        + eventTitle + " — " + when,
+                teamId,
+                Map.of("teamId", teamId, "eventId", eventId));
+    }
+
     // ============================================================
     // Helpers
     // ============================================================

@@ -17,5 +17,10 @@ public record EventListItemResponse(
         VoteAnswer myVote,
         long votesYes,
         long votesNo,
-        long votesMaybe
+        long votesMaybe,
+        Integer requiredPlayers,
+        int votesYesGoalies,
+        int votesYesDefenders,
+        int votesYesForwards,
+        Integer votesYesReserve
 ) {}

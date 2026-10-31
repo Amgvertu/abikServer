@@ -44,6 +44,26 @@ public class Event {
     @Column(length = 1000)
     private String note;
 
+    @Column(name = "required_players")
+    private Integer requiredPlayers;
+
+    /** NONE, MANUAL, TEMPLATE */
+    @Column(name = "charge_mode", nullable = false, length = 20)
+    private String chargeMode;
+
+    @Column(name = "charge_amount_kopecks")
+    private Long chargeAmountKopecks;
+
+    /** EACH_ROSTER, EACH_ATTENDED, SPLIT_ATTENDED, SPLIT_ROSTER */
+    @Column(name = "charge_distribution", length = 20)
+    private String chargeDistribution;
+
+    @Column(name = "charge_template_id")
+    private Long chargeTemplateId;
+
+    @Column(name = "charged_at")
+    private OffsetDateTime chargedAt;
+
     @Column(nullable = false, length = 20)
     private String status;      // ACTIVE, CANCELLED
 
@@ -62,6 +82,7 @@ public class Event {
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
         if (status == null) status = "ACTIVE";
+        if (chargeMode == null) chargeMode = "NONE";
     }
 
     @PreUpdate

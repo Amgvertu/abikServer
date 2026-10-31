@@ -27,6 +27,7 @@ import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class EventService {
@@ -85,10 +86,33 @@ public class EventService {
             long yes = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.YES);
             long no  = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.NO);
             long maybe = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.MAYBE);
+
+            // Счётчики проголосовавших «Иду» по амплуа
+            List<EventVote> yesVotes = voteRepo.findByEventId(e.getId()).stream()
+                    .filter(v -> v.getAnswer() == VoteAnswer.YES)
+                    .toList();
+            int goalies = 0, defenders = 0, forwards = 0;
+            for (EventVote v : yesVotes) {
+                Set<UserPosition> pos = profileRepo.findById(v.getUserId())
+                        .map(p -> (Set<UserPosition>) new HashSet<>(p.getPositions()))
+                        .orElse(Set.of());
+                if (pos.contains(UserPosition.GOALKEEPER)) goalies++;
+                if (pos.contains(UserPosition.DEFENDER)) defenders++;
+                if (pos.contains(UserPosition.FORWARD)) forwards++;
+            }
+
+            Integer limit = mainSquadLimit(e);
+            Integer reserveCount = limit == null
+                    ? null
+                    : Math.max(0, yesVotes.size() - limit);
+
             result.add(new EventListItemResponse(
                     e.getId(), e.getTitle(), e.getSection(), e.getType(),
                     e.getEventDate(), e.getTimeOfDay(),
-                    e.getPlace(), myVote, yes, no, maybe));
+                    e.getPlace(), myVote, yes, no, maybe,
+                    e.getRequiredPlayers(),
+                    goalies, defenders, forwards,
+                    reserveCount));
         }
         return result;
     }
@@ -105,6 +129,19 @@ public class EventService {
             colors.put(s.getUserId(), s.getColor());
         }
 
+        // Резерв: сверх лимита requiredPlayers (только регулярка/двухсторонка)
+        Integer limit = mainSquadLimit(e);
+        Set<Long> reserveIds = new HashSet<>();
+        if (limit != null) {
+            List<EventVote> yesSorted = votes.stream()
+                    .filter(v -> v.getAnswer() == VoteAnswer.YES)
+                    .sorted(Comparator.comparing(EventVote::getUpdatedAt))
+                    .toList();
+            for (int i = limit; i < yesSorted.size(); i++) {
+                reserveIds.add(yesSorted.get(i).getUserId());
+            }
+        }
+
         List<EventVoterDto> voters = new ArrayList<>();
         for (EventVote v : votes) {
             String fullName = profileRepo.findById(v.getUserId())
@@ -117,7 +154,8 @@ public class EventService {
                     .map(TeamMember::getIsTrainer).orElse(false);
             voters.add(new EventVoterDto(
                     v.getUserId(), fullName, v.getAnswer(), positions,
-                    isTrainer, colors.get(v.getUserId())));
+                    isTrainer, colors.get(v.getUserId()),
+                    v.getAnswer() == VoteAnswer.YES && reserveIds.contains(v.getUserId())));
         }
 
         VoteAnswer myVote = votes.stream()
@@ -147,7 +185,13 @@ public class EventService {
                 e.getEventDate(), e.getTimeOfDay(),
                 e.getPlace(), e.getNote(), e.getStatus(),
                 e.getSeriesId(),
-                myVote, voters, lineup);
+                myVote, voters, lineup,
+                e.getRequiredPlayers(),
+                e.getChargeMode(),
+                e.getChargeAmountKopecks(),
+                e.getChargeDistribution(),
+                e.getChargeTemplateId(),
+                e.getChargedAt() != null);
     }
 
     private LineupSlotDto toSlot(EventLineup l) {
@@ -170,6 +214,11 @@ public class EventService {
                     .section(req.section()).type(req.type())
                     .eventDate(req.date()).timeOfDay(req.time())
                     .place(req.place().trim()).note(trim(req.note()))
+                    .requiredPlayers(req.requiredPlayers())
+                    .chargeMode(req.chargeMode() == null ? "NONE" : req.chargeMode())
+                    .chargeAmountKopecks(req.chargeAmountKopecks())
+                    .chargeDistribution(req.chargeDistribution())
+                    .chargeTemplateId(req.chargeTemplateId())
                     .status("ACTIVE").createdBy(actor).build());
             notifyCreated(teamId, actor, e, false);
             return getDetail(teamId, e.getId(), actor);
@@ -208,6 +257,11 @@ public class EventService {
                         .eventDate(cur)
                         .timeOfDay(req.time()).place(req.place().trim())
                         .note(trim(req.note()))
+                        .requiredPlayers(req.requiredPlayers())
+                        .chargeMode(req.chargeMode() == null ? "NONE" : req.chargeMode())
+                        .chargeAmountKopecks(req.chargeAmountKopecks())
+                        .chargeDistribution(req.chargeDistribution())
+                        .chargeTemplateId(req.chargeTemplateId())
                         .status("ACTIVE").createdBy(actor).build());
                 if (first == null) first = saved;
             }
@@ -239,6 +293,13 @@ public class EventService {
         e.setTimeOfDay(req.time());
         e.setPlace(req.place().trim());
         e.setNote(trim(req.note()));
+        e.setRequiredPlayers(req.requiredPlayers());
+        if (req.chargeMode() != null) e.setChargeMode(req.chargeMode());
+        e.setChargeAmountKopecks(req.chargeAmountKopecks());
+        e.setChargeDistribution(req.chargeDistribution());
+        e.setChargeTemplateId(req.chargeTemplateId());
+        // Настройки могли измениться — разрешаем начислить заново
+        e.setChargedAt(null);
         eventRepo.save(e);
 
         if ("series".equals(scope) && e.getSeriesId() != null) {
@@ -263,6 +324,12 @@ public class EventService {
                 f.setTimeOfDay(req.time());
                 f.setPlace(req.place().trim());
                 f.setNote(trim(req.note()));
+                f.setRequiredPlayers(req.requiredPlayers());
+                if (req.chargeMode() != null) f.setChargeMode(req.chargeMode());
+                f.setChargeAmountKopecks(req.chargeAmountKopecks());
+                f.setChargeDistribution(req.chargeDistribution());
+                f.setChargeTemplateId(req.chargeTemplateId());
+                f.setChargedAt(null);
                 eventRepo.save(f);
             }
         }
@@ -312,11 +379,23 @@ public class EventService {
             throw new BadRequestException("Событие отменено");
         }
 
+        // Кто был в основном составе до изменения голоса
+        Set<Long> mainBefore = mainSquadUserIds(e);
+
         EventVote vote = voteRepo.findByEventIdAndUserId(eventId, actor)
                 .orElseGet(() -> EventVote.builder()
                         .eventId(eventId).userId(actor).build());
         vote.setAnswer(answer);
         voteRepo.save(vote);
+
+        // Кто попал в основной состав из резерва после изменения — уведомляем
+        Set<Long> promoted = new HashSet<>(mainSquadUserIds(e));
+        promoted.removeAll(mainBefore);
+        promoted.remove(actor);
+        for (Long userId : promoted) {
+            notificationService.notifyReservePromoted(
+                    userId, teamId, teamName(teamId), e.getId(), e.getTitle(), formatWhen(e));
+        }
     }
 
     // ====== Свитера ======
@@ -544,9 +623,37 @@ public class EventService {
         if (section == EventSection.TRAINING && type != EventType.TRAINING) {
             throw new BadRequestException("Раздел «Тренировки» допускает только тип TRAINING");
         }
-        if (section == EventSection.REGULAR && type == EventType.TRAINING) {
-            throw new BadRequestException("Раздел «Регулярка» допускает типы GAME и MATCH");
+        if ((section == EventSection.REGULAR || section == EventSection.SCRIMMAGE)
+                && type == EventType.TRAINING) {
+            throw new BadRequestException("Разделы «Регулярка» и «Двухсторонка» допускают типы GAME и MATCH");
         }
+    }
+
+    /**
+     * Лимит основного состава: задан только у регулярки/двухсторонки
+     * с requiredPlayers > 0. У остальных событий резерва нет.
+     */
+    private Integer mainSquadLimit(Event e) {
+        if (e.getRequiredPlayers() == null || e.getRequiredPlayers() <= 0) return null;
+        if (e.getSection() == EventSection.REGULAR || e.getSection() == EventSection.SCRIMMAGE) {
+            return e.getRequiredPlayers();
+        }
+        return null;
+    }
+
+    /**
+     * Основной состав: первые N проголосовавших «Иду» по времени голоса (updated_at).
+     * Сменил ответ и вернулся — встаёт в конец очереди.
+     */
+    private Set<Long> mainSquadUserIds(Event e) {
+        Integer limit = mainSquadLimit(e);
+        if (limit == null) return Set.of();
+        return voteRepo.findByEventId(e.getId()).stream()
+                .filter(v -> v.getAnswer() == VoteAnswer.YES)
+                .sorted(Comparator.comparing(EventVote::getUpdatedAt))
+                .limit(limit)
+                .map(EventVote::getUserId)
+                .collect(Collectors.toSet());
     }
 
     private Event getEventOrThrow(Long id) {

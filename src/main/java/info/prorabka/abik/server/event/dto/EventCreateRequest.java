@@ -17,5 +17,10 @@ public record EventCreateRequest(
         @NotBlank @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$") String time,
         @NotBlank @Size(max = 500) String place,
         @Size(max = 1000) String note,
-        RecurrenceDto recurrence
+        RecurrenceDto recurrence,
+        Integer requiredPlayers,
+        String chargeMode,
+        Long chargeAmountKopecks,
+        String chargeDistribution,
+        Long chargeTemplateId
 ) {}
