@@ -31,6 +31,9 @@ public class DevicesController {
     public ResponseEntity<Map<String, String>> register(@Valid @RequestBody DeviceRegisterRequest req) {
         Long userId = SecurityUtils.getCurrentUserId();
 
+        String provider = (req.provider() == null || req.provider().isBlank())
+                ? "FCM" : req.provider().trim().toUpperCase();
+
         UserDevice device = repository.findByToken(req.token())
                 .orElseGet(() -> UserDevice.builder()
                         .userId(userId)
@@ -40,6 +43,7 @@ public class DevicesController {
         // Если токен уже был у другого пользователя — перепривязываем
         device.setUserId(userId);
         device.setPlatform(req.platform());
+        device.setProvider(provider);
         device.setLastSeenAt(OffsetDateTime.now());
         repository.save(device);
 

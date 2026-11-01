@@ -28,6 +28,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,10 +94,25 @@ public class EventChargeService {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new NotFoundException("Команда не найдена"));
 
-        Set<Long> yesVoters = voteRepository.findByEventId(eventId).stream()
+        List<EventVote> votes = voteRepository.findByEventId(eventId);
+        Set<Long> yesVoters = votes.stream()
                 .filter(v -> v.getAnswer() == VoteAnswer.YES)
                 .map(EventVote::getUserId)
                 .collect(Collectors.toSet());
+
+        // Основной состав: первые N проголосовавших «Иду» по времени голоса
+        // (зеркалит логику EventService.mainSquadLimit). Резерв в начислении
+        // не участвует — платят только те, кто реально играл.
+        Set<Long> mainSquad = yesVoters;
+        Integer limit = mainSquadLimit(event);
+        if (limit != null) {
+            mainSquad = votes.stream()
+                    .filter(v -> v.getAnswer() == VoteAnswer.YES)
+                    .sorted(java.util.Comparator.comparing(EventVote::getUpdatedAt))
+                    .limit(limit)
+                    .map(EventVote::getUserId)
+                    .collect(Collectors.toSet());
+        }
 
         long amountKopecks;
         boolean split;
@@ -114,7 +130,10 @@ public class EventChargeService {
             }
             amountKopecks = template.getAmountKopecks();
             split = template.getDistribution() == ChargeDistribution.EQUAL;
-            recipients = template.getMemberIds();
+            // Начисляем только тем, кто был на игре (основной состав без резерва)
+            recipients = template.getMemberIds().stream()
+                    .filter(mainSquad::contains)
+                    .collect(Collectors.toSet());
             groupId = template.getGroupId();
         } else {
             // MANUAL
@@ -132,7 +151,7 @@ public class EventChargeService {
             Set<Long> roster = lineupRepository.findByEventId(eventId).stream()
                     .map(EventLineup::getUserId)
                     .collect(Collectors.toSet());
-            recipients = (attended || roster.isEmpty()) ? yesVoters : roster;
+            recipients = (attended || roster.isEmpty()) ? mainSquad : roster;
 
             String groupName = event.getSection() == EventSection.SCRIMMAGE
                     ? "Двухсторонка" : "Регулярка";
@@ -178,5 +197,17 @@ public class EventChargeService {
                 "message", "Начисление выполнено",
                 "count", recipients.size(),
                 "perPersonKopecks", perPerson);
+    }
+
+    /**
+     * Лимит основного состава: requiredPlayers для регулярки/двухсторонки,
+     * иначе null (лимита нет — все проголосовавшие «Иду» считаются составом).
+     */
+    private Integer mainSquadLimit(Event e) {
+        if (e.getRequiredPlayers() == null || e.getRequiredPlayers() <= 0) return null;
+        if (e.getSection() == EventSection.REGULAR || e.getSection() == EventSection.SCRIMMAGE) {
+            return e.getRequiredPlayers();
+        }
+        return null;
     }
 }

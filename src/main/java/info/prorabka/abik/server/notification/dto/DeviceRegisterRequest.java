@@ -1,13 +1,13 @@
 package info.prorabka.abik.server.notification.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Pattern;
 
+/**
+ * Регистрация устройства для push.
+ * provider — FCM (по умолчанию), RUSTORE, HUAWEI.
+ */
 public record DeviceRegisterRequest(
-        @NotBlank(message = "Токен обязателен")
-        String token,
-
-        @NotBlank(message = "Платформа обязательна")
-        @Pattern(regexp = "ANDROID|IOS|WEB")
-        String platform
+        @NotBlank String token,
+        @NotBlank String platform,
+        String provider
 ) {}

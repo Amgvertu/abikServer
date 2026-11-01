@@ -19,10 +19,14 @@ logging:
 app:
   files:
     dir: "/home/amgvertu/projects/abik/uploads"
-  push:
-    rustore:
-      project-id: ${RUSTORE_PROJECT_ID:}
-      service-token: ${RUSTORE_SERVICE_TOKEN:}
-    fcm:
-      service-account-path: "file:/home/amgvertu/projects/abik/config/firebase-service-account.json"
-      enabled: true
+  fcm:
+    service-account-path: "file:/home/amgvertu/projects/abik/config/firebase-service-account.json"
+    enabled: true
+  rustore:
+    enabled: false
+    project-id: ${RUSTORE_PROJECT_ID:}
+    service-token: ${RUSTORE_SERVICE_TOKEN:}
+  huawei:
+    enabled: false
+    app-id: ""
+    app-secret: ""

@@ -3,6 +3,7 @@ package info.prorabka.abik.server.charge.service;
 import info.prorabka.abik.server.charge.dto.*;
 import info.prorabka.abik.server.charge.entity.*;
 import info.prorabka.abik.server.charge.repository.ChargeRepository;
+import info.prorabka.abik.server.charge.repository.ChargeGroupRepository;
 import info.prorabka.abik.server.charge.repository.ChargeSubgroupRepository;
 import info.prorabka.abik.server.common.exception.BadRequestException;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
@@ -54,6 +55,7 @@ public class ChargeService {
 
     private final ChargeRepository chargeRepository;
     private final ChargeSubgroupRepository subgroupRepository;
+    private final ChargeGroupRepository groupRepository;
     private final ChargeGroupService groupService;
     private final TeamMemberService teamMemberService;
     private final TeamMemberRepository teamMemberRepository;
@@ -69,6 +71,7 @@ public class ChargeService {
 
     public ChargeService(ChargeRepository chargeRepository,
                          ChargeSubgroupRepository subgroupRepository,
+                         ChargeGroupRepository groupRepository,
                          ChargeGroupService groupService,
                          TeamMemberService teamMemberService,
                          TeamMemberRepository teamMemberRepository,
@@ -82,6 +85,7 @@ public class ChargeService {
                          NotificationService notificationService) {
         this.chargeRepository = chargeRepository;
         this.subgroupRepository = subgroupRepository;
+        this.groupRepository = groupRepository;
         this.groupService = groupService;
         this.teamMemberService = teamMemberService;
         this.teamMemberRepository = teamMemberRepository;
@@ -446,6 +450,14 @@ public class ChargeService {
         return totalCreated;
     }
 
+    /** Группа шаблона — «Регулярка» (начисление только по факту игры). */
+    private boolean isRegularGroup(Long groupId) {
+        if (groupId == null) return false;
+        return groupRepository.findById(groupId)
+                .map(g -> "Регулярка".equalsIgnoreCase(g.getName()))
+                .orElse(false);
+    }
+
     /** Генерация для одной команды. */
     private int generateForTeam(Team team, LocalDate today) {
         // Локальная дата команды
@@ -472,6 +484,11 @@ public class ChargeService {
         for (ChargeTemplate template : templates) {
             if (template.getType() != ChargeType.SYSTEMATIC) continue;
             if (template.getDayOfMonth() == null) continue;
+
+            // Шаблоны группы «Регулярка» автоматически не генерируются:
+            // начисление по ним выполняется вручную после игры
+            // (кнопка «Начислить» на событии, EventChargeService).
+            if (isRegularGroup(template.getGroupId())) continue;
 
             // Проверка окна действия
             if (template.getStartDate() != null && localToday.isBefore(template.getStartDate())) {

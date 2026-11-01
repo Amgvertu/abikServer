@@ -69,7 +69,9 @@ public class FcmPushSender implements PushSender {
     @Override
     public boolean send(Long userId, String target, NotificationType type,
                         String title, String body, Map<String, Object> payload) {
-        List<UserDevice> devices = deviceRepository.findByUserId(userId);
+        List<UserDevice> devices = deviceRepository.findByUserId(userId).stream()
+                .filter(d -> "FCM".equals(d.getProvider()))
+                .toList();
         if (devices.isEmpty()) {
             log.debug("[FCM] у пользователя {} нет устройств", userId);
             return false;

@@ -35,3 +35,11 @@ app:
   fcm:
     service-account-path: "classpath:firebase-service-account.json"
     enabled: true                    # false — в dev-режиме просто логировать
+  rustore:
+    enabled: false
+    project-id: "3hXUg4XY1qsSRn0Gshfr3k28EoKtWlc9"
+    service-token: "WAc0IVmZV5W0i5O995DDOtjP2bsNTH7wvCSg66IDgO8tj0qEWhaYkm2GCJjl3LUU"
+  huawei:
+    enabled: false
+    app-id: ""
+    app-secret: ""

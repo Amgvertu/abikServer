@@ -27,6 +27,10 @@ public class UserDevice {
     @Column(nullable = false, length = 20)
     private String platform;
 
+    /** Провайдер push: FCM (по умолчанию), RUSTORE, HUAWEI. */
+    @Column(nullable = false, length = 20)
+    private String provider;
+
     @Column(name = "created_at", nullable = false)
     private OffsetDateTime createdAt;
 
@@ -38,5 +42,6 @@ public class UserDevice {
         OffsetDateTime now = OffsetDateTime.now();
         if (createdAt == null) createdAt = now;
         if (lastSeenAt == null) lastSeenAt = now;
+        if (provider == null || provider.isBlank()) provider = "FCM";
     }
 }
