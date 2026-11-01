@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 public record EventCreateRequest(
         @NotBlank @Size(max = 200) String title,
@@ -22,5 +23,6 @@ public record EventCreateRequest(
         String chargeMode,
         Long chargeAmountKopecks,
         String chargeDistribution,
-        Long chargeTemplateId
+        Long chargeTemplateId,
+        Set<Long> chargeMemberIds
 ) {}

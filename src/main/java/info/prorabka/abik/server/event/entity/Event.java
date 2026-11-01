@@ -61,6 +61,20 @@ public class Event {
     @Column(name = "charge_template_id")
     private Long chargeTemplateId;
 
+    /**
+     * Явный список получателей ручного начисления (режим MANUAL).
+     * Пустой список — получатели определяются по способу начисления
+     * (отметившиеся/заявленные).
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "event_charge_members",
+            joinColumns = @JoinColumn(name = "event_id")
+    )
+    @Column(name = "user_id", nullable = false)
+    @Builder.Default
+    private java.util.Set<Long> chargeMemberIds = new java.util.HashSet<>();
+
     @Column(name = "charged_at")
     private OffsetDateTime chargedAt;
 

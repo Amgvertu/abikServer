@@ -151,7 +151,13 @@ public class EventChargeService {
             Set<Long> roster = lineupRepository.findByEventId(eventId).stream()
                     .map(EventLineup::getUserId)
                     .collect(Collectors.toSet());
-            recipients = (attended || roster.isEmpty()) ? mainSquad : roster;
+            Set<Long> custom = event.getChargeMemberIds();
+            if (custom != null && !custom.isEmpty()) {
+                // Явный список получателей, выбранный в форме события
+                recipients = custom;
+            } else {
+                recipients = (attended || roster.isEmpty()) ? mainSquad : roster;
+            }
 
             String groupName = event.getSection() == EventSection.SCRIMMAGE
                     ? "Двухсторонка" : "Регулярка";

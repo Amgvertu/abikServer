@@ -87,12 +87,18 @@ public class EventService {
             long no  = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.NO);
             long maybe = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.MAYBE);
 
-            // Счётчики проголосовавших «Иду» по амплуа
+            // Счётчики проголосовавших «Иду» по амплуа: только основной состав
+            // (резерв не учитывается — зеркалит детальный экран события)
+            Integer limit = mainSquadLimit(e);
             List<EventVote> yesVotes = voteRepo.findByEventId(e.getId()).stream()
                     .filter(v -> v.getAnswer() == VoteAnswer.YES)
+                    .sorted(Comparator.comparing(EventVote::getUpdatedAt))
                     .toList();
+            List<EventVote> squadVotes = limit == null
+                    ? yesVotes
+                    : yesVotes.stream().limit(limit).toList();
             int goalies = 0, defenders = 0, forwards = 0;
-            for (EventVote v : yesVotes) {
+            for (EventVote v : squadVotes) {
                 Set<UserPosition> pos = profileRepo.findById(v.getUserId())
                         .map(p -> (Set<UserPosition>) new HashSet<>(p.getPositions()))
                         .orElse(Set.of());
@@ -101,7 +107,6 @@ public class EventService {
                 if (pos.contains(UserPosition.FORWARD)) forwards++;
             }
 
-            Integer limit = mainSquadLimit(e);
             Integer reserveCount = limit == null
                     ? null
                     : Math.max(0, yesVotes.size() - limit);
@@ -191,6 +196,7 @@ public class EventService {
                 e.getChargeAmountKopecks(),
                 e.getChargeDistribution(),
                 e.getChargeTemplateId(),
+                e.getChargeMemberIds(),
                 e.getChargedAt() != null);
     }
 
@@ -219,6 +225,7 @@ public class EventService {
                     .chargeAmountKopecks(req.chargeAmountKopecks())
                     .chargeDistribution(req.chargeDistribution())
                     .chargeTemplateId(req.chargeTemplateId())
+                    .chargeMemberIds(toIdSet(req.chargeMemberIds()))
                     .status("ACTIVE").createdBy(actor).build());
             notifyCreated(teamId, actor, e, false);
             return getDetail(teamId, e.getId(), actor);
@@ -262,6 +269,7 @@ public class EventService {
                         .chargeAmountKopecks(req.chargeAmountKopecks())
                         .chargeDistribution(req.chargeDistribution())
                         .chargeTemplateId(req.chargeTemplateId())
+                        .chargeMemberIds(toIdSet(req.chargeMemberIds()))
                         .status("ACTIVE").createdBy(actor).build());
                 if (first == null) first = saved;
             }
@@ -298,6 +306,7 @@ public class EventService {
         e.setChargeAmountKopecks(req.chargeAmountKopecks());
         e.setChargeDistribution(req.chargeDistribution());
         e.setChargeTemplateId(req.chargeTemplateId());
+        e.setChargeMemberIds(toIdSet(req.chargeMemberIds()));
         // Настройки могли измениться — разрешаем начислить заново
         e.setChargedAt(null);
         eventRepo.save(e);
@@ -329,6 +338,7 @@ public class EventService {
                 f.setChargeAmountKopecks(req.chargeAmountKopecks());
                 f.setChargeDistribution(req.chargeDistribution());
                 f.setChargeTemplateId(req.chargeTemplateId());
+                f.setChargeMemberIds(toIdSet(req.chargeMemberIds()));
                 f.setChargedAt(null);
                 eventRepo.save(f);
             }
@@ -664,5 +674,10 @@ public class EventService {
         if (s == null) return null;
         String t = s.trim();
         return t.isEmpty() ? null : t;
+    }
+
+    /** Копия списка id (null → пустое множество). */
+    private Set<Long> toIdSet(Set<Long> ids) {
+        return ids == null ? new HashSet<>() : new HashSet<>(ids);
     }
 }
