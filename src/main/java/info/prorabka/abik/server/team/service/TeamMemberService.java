@@ -295,11 +295,8 @@ public class TeamMemberService {
     @Transactional
     public TeamMemberResponse setTrainer(Long teamId, Long targetUserId, Long actorUserId,
                                          boolean isTrainer) {
-        TeamMember actor = requireManager(teamId, actorUserId);
-        // Тренера назначает только OWNER или ADMIN
-        if (actor.getRole() != MemberRole.OWNER && actor.getRole() != MemberRole.ADMIN) {
-            throw new ForbiddenException("Назначать тренера может только владелец или админ");
-        }
+        // Тренера назначает только владелец команды
+        requireOwner(teamId, actorUserId);
         TeamMember target = requireMember(teamId, targetUserId);
         target.setIsTrainer(isTrainer);
         TeamMember saved = teamMemberRepository.save(target);

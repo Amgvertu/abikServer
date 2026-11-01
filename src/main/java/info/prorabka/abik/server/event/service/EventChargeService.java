@@ -24,6 +24,8 @@ import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.team.entity.Team;
 import info.prorabka.abik.server.team.repository.TeamRepository;
 import info.prorabka.abik.server.team.service.TeamMemberService;
+import info.prorabka.abik.server.user.entity.UserPosition;
+import info.prorabka.abik.server.user.repository.UserProfileRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +54,7 @@ public class EventChargeService {
     private final TeamMemberService teamMemberService;
     private final TeamRepository teamRepository;
     private final NotificationService notificationService;
+    private final UserProfileRepository profileRepository;
 
     public EventChargeService(EventRepository eventRepository,
                               EventVoteRepository voteRepository,
@@ -61,7 +64,8 @@ public class EventChargeService {
                               ChargeTemplateRepository templateRepository,
                               TeamMemberService teamMemberService,
                               TeamRepository teamRepository,
-                              NotificationService notificationService) {
+                              NotificationService notificationService,
+                              UserProfileRepository profileRepository) {
         this.eventRepository = eventRepository;
         this.voteRepository = voteRepository;
         this.lineupRepository = lineupRepository;
@@ -71,6 +75,7 @@ public class EventChargeService {
         this.teamMemberService = teamMemberService;
         this.teamRepository = teamRepository;
         this.notificationService = notificationService;
+        this.profileRepository = profileRepository;
     }
 
     @Transactional
@@ -101,17 +106,24 @@ public class EventChargeService {
                 .collect(Collectors.toSet());
 
         // Основной состав: первые N проголосовавших «Иду» по времени голоса
-        // (зеркалит логику EventService.mainSquadLimit). Резерв в начислении
-        // не участвует — платят только те, кто реально играл.
+        // (зеркалит логику EventService.mainSquadLimit). Вратари всегда
+        // в составе — в лимит входят только полевые игроки. Резерв в
+        // начислении не участвует — платят только те, кто реально играл.
         Set<Long> mainSquad = yesVoters;
         Integer limit = mainSquadLimit(event);
         if (limit != null) {
-            mainSquad = votes.stream()
+            List<EventVote> yesSorted = votes.stream()
                     .filter(v -> v.getAnswer() == VoteAnswer.YES)
                     .sorted(java.util.Comparator.comparing(EventVote::getUpdatedAt))
-                    .limit(limit)
-                    .map(EventVote::getUserId)
-                    .collect(Collectors.toSet());
+                    .toList();
+            List<EventVote> goalies = yesSorted.stream()
+                    .filter(v -> isGoalkeeper(v.getUserId())).toList();
+            List<EventVote> field = yesSorted.stream()
+                    .filter(v -> !isGoalkeeper(v.getUserId())).toList();
+            Set<Long> squad = new java.util.HashSet<>();
+            goalies.forEach(v -> squad.add(v.getUserId()));
+            field.stream().limit(limit).forEach(v -> squad.add(v.getUserId()));
+            mainSquad = squad;
         }
 
         long amountKopecks;
@@ -215,5 +227,12 @@ public class EventChargeService {
             return e.getRequiredPlayers();
         }
         return null;
+    }
+
+    /** Игрок — вратарь (по амплуа в профиле). */
+    private boolean isGoalkeeper(Long userId) {
+        return profileRepository.findById(userId)
+                .map(p -> p.getPositions().contains(UserPosition.GOALKEEPER))
+                .orElse(false);
     }
 }

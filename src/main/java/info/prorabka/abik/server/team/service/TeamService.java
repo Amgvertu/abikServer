@@ -37,19 +37,22 @@ public class TeamService {
     private final TeamMemberService teamMemberService;
     private final GeoService geoService;
     private final NotificationService notificationService;
+    private final info.prorabka.abik.server.common.file.FileStorageService fileStorageService;
 
     public TeamService(TeamRepository teamRepository,
                        TeamMemberRepository teamMemberRepository,
                        OwnershipTransferRepository ownershipTransferRepository,
                        TeamMemberService teamMemberService,
                        GeoService geoService,
-                       NotificationService notificationService) {
+                       NotificationService notificationService,
+                       info.prorabka.abik.server.common.file.FileStorageService fileStorageService) {
         this.teamRepository = teamRepository;
         this.teamMemberRepository = teamMemberRepository;
         this.ownershipTransferRepository = ownershipTransferRepository;
         this.teamMemberService = teamMemberService;
         this.geoService = geoService;
         this.notificationService = notificationService;
+        this.fileStorageService = fileStorageService;
     }
 
     // ============================================================
@@ -125,7 +128,15 @@ public class TeamService {
         team.setName(req.name().trim());
         team.setCityId(city.getId());
         team.setHomeRegionId(region.getId());
-        team.setLogoUrl(req.logoUrl().trim());
+
+        // При смене/удалении логотипа старый файл убираем с диска
+        String oldLogo = team.getLogoUrl();
+        String newLogo = req.logoUrl() == null ? null : req.logoUrl().trim();
+        if (newLogo != null && newLogo.isEmpty()) newLogo = null;
+        if (oldLogo != null && !oldLogo.equals(newLogo)) {
+            fileStorageService.delete(oldLogo);
+        }
+        team.setLogoUrl(newLogo);
         team.setDescription(trimOrNull(req.description()));
         team.setSeason(trimOrNull(req.season()));
 

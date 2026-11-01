@@ -2,6 +2,7 @@ package info.prorabka.abik.server.user.service;
 
 import info.prorabka.abik.server.common.exception.BadRequestException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
+import info.prorabka.abik.server.common.file.FileStorageService;
 import info.prorabka.abik.server.geo.entity.City;
 import info.prorabka.abik.server.geo.entity.Region;
 import info.prorabka.abik.server.geo.service.GeoService;
@@ -26,10 +27,13 @@ public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final GeoService geoService;
+    private final FileStorageService fileStorageService;
 
-    public UserProfileService(UserProfileRepository userProfileRepository, GeoService geoService) {
+    public UserProfileService(UserProfileRepository userProfileRepository, GeoService geoService,
+                              FileStorageService fileStorageService) {
         this.userProfileRepository = userProfileRepository;
         this.geoService = geoService;
+        this.fileStorageService = fileStorageService;
     }
 
     /**
@@ -57,7 +61,14 @@ public class UserProfileService {
         profile.setJerseySize(trimOrNull(req.jerseySize()));
         profile.setCoversSize(trimOrNull(req.coversSize()));
         profile.setGaitersSize(trimOrNull(req.gaitersSize()));
-        profile.setAvatarUrl(trimOrNull(req.avatarUrl()));
+
+        // При смене/удалении аватара старый файл убираем с диска
+        String oldAvatar = profile.getAvatarUrl();
+        String newAvatar = trimOrNull(req.avatarUrl());
+        if (oldAvatar != null && !oldAvatar.equals(newAvatar)) {
+            fileStorageService.delete(oldAvatar);
+        }
+        profile.setAvatarUrl(newAvatar);
 
         // 4. Заменяем амплуа целиком
         profile.setPositions(new HashSet<>(req.positions()));

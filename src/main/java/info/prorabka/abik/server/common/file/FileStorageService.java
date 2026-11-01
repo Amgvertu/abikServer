@@ -90,6 +90,26 @@ public class FileStorageService {
         return p;
     }
 
+    /**
+     * Удалить файл по URL или имени. Используется при смене/удалении
+     * аватара и логотипа. Ошибки не пробрасываются — удаление файла
+     * не должно ломать основную операцию.
+     */
+    public void delete(String fileNameOrUrl) {
+        if (fileNameOrUrl == null || fileNameOrUrl.isBlank()) return;
+        try {
+            String fileName = fileNameOrUrl.substring(fileNameOrUrl.lastIndexOf('/') + 1);
+            if (fileName.contains("\\") || fileName.contains("..")) return;
+            Path p = storagePath.resolve(fileName).normalize();
+            if (p.startsWith(storagePath)) {
+                Files.deleteIfExists(p);
+                log.info("Файл удалён: {}", fileName);
+            }
+        } catch (Exception e) {
+            log.warn("Не удалось удалить файл {}: {}", fileNameOrUrl, e.getMessage());
+        }
+    }
+
     public String detectContentType(String fileName) {
         String ext = extractExt(fileName);
         return switch (ext) {

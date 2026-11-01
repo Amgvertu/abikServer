@@ -25,5 +25,7 @@ public enum NotificationType {
     EVENT_CANCELLED,
     ROSTER_ADDED,
     ROSTER_REMOVED,
-    TRAINER_ASSIGNED
+    TRAINER_ASSIGNED,
+    /** Напоминание о тренировке накануне (за день до события). */
+    EVENT_REMINDER
 }

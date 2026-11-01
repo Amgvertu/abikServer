@@ -88,15 +88,16 @@ public class EventService {
             long maybe = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.MAYBE);
 
             // Счётчики проголосовавших «Иду» по амплуа: только основной состав
-            // (резерв не учитывается — зеркалит детальный экран события)
-            Integer limit = mainSquadLimit(e);
+            // (резерв не учитывается — зеркалит детальный экран события).
+            // Вратари всегда в составе — в лимит requiredPlayers входят
+            // только полевые игроки (защитники и нападающие).
             List<EventVote> yesVotes = voteRepo.findByEventId(e.getId()).stream()
                     .filter(v -> v.getAnswer() == VoteAnswer.YES)
                     .sorted(Comparator.comparing(EventVote::getUpdatedAt))
                     .toList();
-            List<EventVote> squadVotes = limit == null
-                    ? yesVotes
-                    : yesVotes.stream().limit(limit).toList();
+            List<EventVote> squadVotes = mainSquadVotes(e, yesVotes);
+            Set<Long> mainIds = squadVotes.stream()
+                    .map(EventVote::getUserId).collect(Collectors.toSet());
             int goalies = 0, defenders = 0, forwards = 0;
             for (EventVote v : squadVotes) {
                 Set<UserPosition> pos = profileRepo.findById(v.getUserId())
@@ -107,9 +108,12 @@ public class EventService {
                 if (pos.contains(UserPosition.FORWARD)) forwards++;
             }
 
-            Integer reserveCount = limit == null
+            Integer reserveCount = mainSquadLimit(e) == null
                     ? null
-                    : Math.max(0, yesVotes.size() - limit);
+                    : Math.max(0, yesVotes.size() - squadVotes.size());
+            // Мой статус: проголосовал «Иду», но попал в резерв
+            Boolean myInReserve = myVote == VoteAnswer.YES && !mainIds.contains(actor)
+                    ? Boolean.TRUE : null;
 
             result.add(new EventListItemResponse(
                     e.getId(), e.getTitle(), e.getSection(), e.getType(),
@@ -117,7 +121,7 @@ public class EventService {
                     e.getPlace(), myVote, yes, no, maybe,
                     e.getRequiredPlayers(),
                     goalies, defenders, forwards,
-                    reserveCount));
+                    reserveCount, myInReserve));
         }
         return result;
     }
@@ -134,7 +138,8 @@ public class EventService {
             colors.put(s.getUserId(), s.getColor());
         }
 
-        // Резерв: сверх лимита requiredPlayers (только регулярка/двухсторонка)
+        // Резерв: полевые игроки сверх лимита requiredPlayers
+        // (только регулярка/двухсторонка). Вратари в резерв не попадают.
         Integer limit = mainSquadLimit(e);
         Set<Long> reserveIds = new HashSet<>();
         if (limit != null) {
@@ -142,9 +147,11 @@ public class EventService {
                     .filter(v -> v.getAnswer() == VoteAnswer.YES)
                     .sorted(Comparator.comparing(EventVote::getUpdatedAt))
                     .toList();
-            for (int i = limit; i < yesSorted.size(); i++) {
-                reserveIds.add(yesSorted.get(i).getUserId());
-            }
+            Set<Long> mainIds = mainSquadVotes(e, yesSorted).stream()
+                    .map(EventVote::getUserId).collect(Collectors.toSet());
+            yesSorted.stream()
+                    .filter(v -> !mainIds.contains(v.getUserId()))
+                    .forEach(v -> reserveIds.add(v.getUserId()));
         }
 
         List<EventVoterDto> voters = new ArrayList<>();
@@ -416,8 +423,8 @@ public class EventService {
         TeamMember actorMember = teamMemberService.requireMember(teamId, actor);
         Event e = getEventOrThrow(eventId);
         if (!e.getTeamId().equals(teamId)) throw new ForbiddenException("Событие другой команды");
-        if (e.getType() != EventType.TRAINING) {
-            throw new BadRequestException("Цвета свитеров — только для тренировок");
+        if (e.getType() != EventType.TRAINING && e.getSection() != EventSection.SCRIMMAGE) {
+            throw new BadRequestException("Цвета маек — только для тренировок и двухсторонок");
         }
 
         // Права: OWNER, ADMIN, тренер
@@ -658,12 +665,37 @@ public class EventService {
     private Set<Long> mainSquadUserIds(Event e) {
         Integer limit = mainSquadLimit(e);
         if (limit == null) return Set.of();
-        return voteRepo.findByEventId(e.getId()).stream()
+        List<EventVote> yesSorted = voteRepo.findByEventId(e.getId()).stream()
                 .filter(v -> v.getAnswer() == VoteAnswer.YES)
                 .sorted(Comparator.comparing(EventVote::getUpdatedAt))
-                .limit(limit)
+                .toList();
+        return mainSquadVotes(e, yesSorted).stream()
                 .map(EventVote::getUserId)
                 .collect(Collectors.toSet());
+    }
+
+    /** Игрок — вратарь (по амплуа в профиле). */
+    private boolean isGoalkeeper(Long userId) {
+        return profileRepo.findById(userId)
+                .map(p -> p.getPositions().contains(UserPosition.GOALKEEPER))
+                .orElse(false);
+    }
+
+    /**
+     * Основной состав из проголосовавших «Иду» (уже отсортированных по времени голоса):
+     * все вратари + первые limit полевых. Вратари в лимит requiredPlayers не входят
+     * и в резерв не попадают. Если лимита нет — все проголосовавшие.
+     */
+    private List<EventVote> mainSquadVotes(Event e, List<EventVote> yesSorted) {
+        Integer limit = mainSquadLimit(e);
+        if (limit == null) return yesSorted;
+        List<EventVote> goalies = yesSorted.stream()
+                .filter(v -> isGoalkeeper(v.getUserId())).toList();
+        List<EventVote> field = yesSorted.stream()
+                .filter(v -> !isGoalkeeper(v.getUserId())).toList();
+        List<EventVote> main = new ArrayList<>(goalies);
+        main.addAll(field.stream().limit(limit).toList());
+        return main;
     }
 
     private Event getEventOrThrow(Long id) {
