@@ -21,4 +21,11 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     /** События нужного раздела на конкретную дату (для напоминаний). */
     List<Event> findByEventDateAndSectionAndStatus(
             LocalDate eventDate, EventSection section, String status);
+
+    /**
+     * Завершившиеся события с настроенным, но ещё не выполненным начислением
+     * (для автоначисления после окончания).
+     */
+    List<Event> findByEventDateLessThanEqualAndStatusAndChargedAtIsNullAndChargeModeNot(
+            LocalDate eventDate, String status, String chargeMode);
 }

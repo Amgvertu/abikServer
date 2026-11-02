@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -89,8 +91,9 @@ public class EventService {
 
             // Счётчики проголосовавших «Иду» по амплуа: только основной состав
             // (резерв не учитывается — зеркалит детальный экран события).
-            // Вратари всегда в составе — в лимит requiredPlayers входят
-            // только полевые игроки (защитники и нападающие).
+            // Вратари и тренеры всегда в составе — в лимит requiredPlayers
+            // входят только полевые игроки (защитники и нападающие).
+            // Тренеры считаются отдельно, их амплуа игнорируется.
             List<EventVote> yesVotes = voteRepo.findByEventId(e.getId()).stream()
                     .filter(v -> v.getAnswer() == VoteAnswer.YES)
                     .sorted(Comparator.comparing(EventVote::getUpdatedAt))
@@ -98,8 +101,12 @@ public class EventService {
             List<EventVote> squadVotes = mainSquadVotes(e, yesVotes);
             Set<Long> mainIds = squadVotes.stream()
                     .map(EventVote::getUserId).collect(Collectors.toSet());
-            int goalies = 0, defenders = 0, forwards = 0;
+            int goalies = 0, defenders = 0, forwards = 0, trainers = 0;
             for (EventVote v : squadVotes) {
+                if (isTrainerMember(e.getTeamId(), v.getUserId())) {
+                    trainers++;
+                    continue;
+                }
                 Set<UserPosition> pos = profileRepo.findById(v.getUserId())
                         .map(p -> (Set<UserPosition>) new HashSet<>(p.getPositions()))
                         .orElse(Set.of());
@@ -120,7 +127,7 @@ public class EventService {
                     e.getEventDate(), e.getTimeOfDay(),
                     e.getPlace(), myVote, yes, no, maybe,
                     e.getRequiredPlayers(),
-                    goalies, defenders, forwards,
+                    goalies, defenders, forwards, trainers,
                     reserveCount, myInReserve));
         }
         return result;
@@ -394,6 +401,10 @@ public class EventService {
         if (!e.getTeamId().equals(teamId)) throw new ForbiddenException("Событие другой команды");
         if (!"ACTIVE".equals(e.getStatus())) {
             throw new BadRequestException("Событие отменено");
+        }
+        // Опрос закрывается в указанное время события (оно же — момент окончания)
+        if (isEventPast(e)) {
+            throw new BadRequestException("Опрос завершён: событие уже прошло");
         }
 
         // Кто был в основном составе до изменения голоса
@@ -681,19 +692,44 @@ public class EventService {
                 .orElse(false);
     }
 
+    /** Участник — тренер команды. */
+    private boolean isTrainerMember(Long teamId, Long userId) {
+        return teamMemberRepo.findByTeamIdAndUserId(teamId, userId)
+                .map(m -> Boolean.TRUE.equals(m.getIsTrainer()))
+                .orElse(false);
+    }
+
+    /**
+     * Событие уже прошло: момент окончания = указанные дата и время.
+     * Если время некорректно/отсутствует — считаем прошедшим весь следующий день.
+     */
+    static boolean isEventPast(Event e) {
+        LocalTime time;
+        try {
+            time = LocalTime.parse(e.getTimeOfDay());
+        } catch (Exception ex) {
+            return e.getEventDate().isBefore(LocalDate.now());
+        }
+        return !LocalDateTime.of(e.getEventDate(), time).isAfter(LocalDateTime.now());
+    }
+
     /**
      * Основной состав из проголосовавших «Иду» (уже отсортированных по времени голоса):
-     * все вратари + первые limit полевых. Вратари в лимит requiredPlayers не входят
-     * и в резерв не попадают. Если лимита нет — все проголосовавшие.
+     * все вратари и тренеры + первые limit полевых. Вратари и тренеры в лимит
+     * requiredPlayers не входят и в резерв не попадают. Если лимита нет — все.
      */
     private List<EventVote> mainSquadVotes(Event e, List<EventVote> yesSorted) {
         Integer limit = mainSquadLimit(e);
         if (limit == null) return yesSorted;
-        List<EventVote> goalies = yesSorted.stream()
-                .filter(v -> isGoalkeeper(v.getUserId())).toList();
+        List<EventVote> outside = yesSorted.stream()
+                .filter(v -> isGoalkeeper(v.getUserId())
+                        || isTrainerMember(e.getTeamId(), v.getUserId()))
+                .toList();
         List<EventVote> field = yesSorted.stream()
-                .filter(v -> !isGoalkeeper(v.getUserId())).toList();
-        List<EventVote> main = new ArrayList<>(goalies);
+                .filter(v -> !isGoalkeeper(v.getUserId())
+                        && !isTrainerMember(e.getTeamId(), v.getUserId()))
+                .toList();
+        List<EventVote> main = new ArrayList<>(outside);
         main.addAll(field.stream().limit(limit).toList());
         return main;
     }

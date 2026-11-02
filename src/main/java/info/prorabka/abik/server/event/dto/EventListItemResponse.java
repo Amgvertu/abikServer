@@ -22,6 +22,8 @@ public record EventListItemResponse(
         int votesYesGoalies,
         int votesYesDefenders,
         int votesYesForwards,
+        /** Тренеры среди проголосовавших «Иду» (амплуа тренера не учитывается). */
+        int votesYesTrainers,
         Integer votesYesReserve,
         /** true — я проголосовал «Иду», но попал в резерв. */
         Boolean myInReserve

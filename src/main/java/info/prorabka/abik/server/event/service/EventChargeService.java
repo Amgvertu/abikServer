@@ -22,6 +22,7 @@ import info.prorabka.abik.server.event.repository.EventRepository;
 import info.prorabka.abik.server.event.repository.EventVoteRepository;
 import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.team.entity.Team;
+import info.prorabka.abik.server.team.repository.TeamMemberRepository;
 import info.prorabka.abik.server.team.repository.TeamRepository;
 import info.prorabka.abik.server.team.service.TeamMemberService;
 import info.prorabka.abik.server.user.entity.UserPosition;
@@ -53,6 +54,7 @@ public class EventChargeService {
     private final ChargeTemplateRepository templateRepository;
     private final TeamMemberService teamMemberService;
     private final TeamRepository teamRepository;
+    private final TeamMemberRepository teamMemberRepository;
     private final NotificationService notificationService;
     private final UserProfileRepository profileRepository;
 
@@ -64,6 +66,7 @@ public class EventChargeService {
                               ChargeTemplateRepository templateRepository,
                               TeamMemberService teamMemberService,
                               TeamRepository teamRepository,
+                              TeamMemberRepository teamMemberRepository,
                               NotificationService notificationService,
                               UserProfileRepository profileRepository) {
         this.eventRepository = eventRepository;
@@ -74,13 +77,24 @@ public class EventChargeService {
         this.templateRepository = templateRepository;
         this.teamMemberService = teamMemberService;
         this.teamRepository = teamRepository;
+        this.teamMemberRepository = teamMemberRepository;
         this.notificationService = notificationService;
         this.profileRepository = profileRepository;
     }
 
+    /** Ручное начисление управляющим (кнопка в приложении). */
     @Transactional
     public Map<String, Object> chargeForEvent(Long teamId, Long eventId, Long actorUserId) {
         teamMemberService.requireManager(teamId, actorUserId);
+        return doCharge(teamId, eventId);
+    }
+
+    /**
+     * Само начисление без проверки актора — вызывается из ручного endpoint'а
+     * и из планировщика (автоначисление после окончания события).
+     */
+    @Transactional
+    public Map<String, Object> doCharge(Long teamId, Long eventId) {
 
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие не найдено"));
@@ -109,7 +123,10 @@ public class EventChargeService {
         // (зеркалит логику EventService.mainSquadLimit). Вратари всегда
         // в составе — в лимит входят только полевые игроки. Резерв в
         // начислении не участвует — платят только те, кто реально играл.
-        Set<Long> mainSquad = yesVoters;
+        // Тренеры в лимит не входят и начисления не получают.
+        Set<Long> mainSquad = yesVoters.stream()
+                .filter(uid -> !isTrainer(teamId, uid))
+                .collect(Collectors.toSet());
         Integer limit = mainSquadLimit(event);
         if (limit != null) {
             List<EventVote> yesSorted = votes.stream()
@@ -117,9 +134,13 @@ public class EventChargeService {
                     .sorted(java.util.Comparator.comparing(EventVote::getUpdatedAt))
                     .toList();
             List<EventVote> goalies = yesSorted.stream()
-                    .filter(v -> isGoalkeeper(v.getUserId())).toList();
+                    .filter(v -> isGoalkeeper(v.getUserId())
+                            && !isTrainer(teamId, v.getUserId()))
+                    .toList();
             List<EventVote> field = yesSorted.stream()
-                    .filter(v -> !isGoalkeeper(v.getUserId())).toList();
+                    .filter(v -> !isGoalkeeper(v.getUserId())
+                            && !isTrainer(teamId, v.getUserId()))
+                    .toList();
             Set<Long> squad = new java.util.HashSet<>();
             goalies.forEach(v -> squad.add(v.getUserId()));
             field.stream().limit(limit).forEach(v -> squad.add(v.getUserId()));
@@ -182,6 +203,13 @@ public class EventChargeService {
         if (recipients.isEmpty()) {
             throw new BadRequestException("Нет получателей начисления");
         }
+        // Тренеры освобождены от начислений за события
+        recipients = recipients.stream()
+                .filter(uid -> !isTrainer(teamId, uid))
+                .collect(Collectors.toSet());
+        if (recipients.isEmpty()) {
+            throw new BadRequestException("Нет получателей начисления");
+        }
         long perPerson = split
                 ? Math.round(amountKopecks * 1.0 / recipients.size())
                 : amountKopecks;
@@ -233,6 +261,13 @@ public class EventChargeService {
     private boolean isGoalkeeper(Long userId) {
         return profileRepository.findById(userId)
                 .map(p -> p.getPositions().contains(UserPosition.GOALKEEPER))
+                .orElse(false);
+    }
+
+    /** Участник — тренер команды. */
+    private boolean isTrainer(Long teamId, Long userId) {
+        return teamMemberRepository.findByTeamIdAndUserId(teamId, userId)
+                .map(m -> Boolean.TRUE.equals(m.getIsTrainer()))
                 .orElse(false);
     }
 }
