@@ -1,5 +1,6 @@
 package info.prorabka.abik.server.user.dto;
 
+import info.prorabka.abik.server.user.entity.PlayerStatus;
 import info.prorabka.abik.server.user.entity.StickHand;
 import info.prorabka.abik.server.user.entity.UserPosition;
 import jakarta.validation.constraints.*;
@@ -46,6 +47,9 @@ public record UserProfileRequest(
 
         @NotEmpty(message = "Укажите хотя бы одно амплуа")
         Set<UserPosition> positions,
+
+        // null от старых клиентов трактуется как AMATEUR при сохранении.
+        PlayerStatus playerStatus,
 
         @Size(max = 20)
         String jerseySize,

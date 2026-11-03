@@ -1,0 +1,2 @@
+ALTER TABLE user_profiles
+    ADD COLUMN player_status VARCHAR(30) NOT NULL DEFAULT 'AMATEUR';

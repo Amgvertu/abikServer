@@ -1,5 +1,6 @@
 package info.prorabka.abik.server.user.dto;
 
+import info.prorabka.abik.server.user.entity.PlayerStatus;
 import info.prorabka.abik.server.user.entity.StickHand;
 import info.prorabka.abik.server.user.entity.UserPosition;
 import info.prorabka.abik.server.user.entity.UserProfile;
@@ -25,6 +26,7 @@ public record UserProfileResponse(
         Short weightKg,
         StickHand stickHand,
         Set<UserPosition> positions,
+        PlayerStatus playerStatus,
         String jerseySize,
         String coversSize,
         String gaitersSize,
@@ -46,6 +48,7 @@ public record UserProfileResponse(
                 p.getWeightKg(),
                 p.getStickHand(),
                 p.getPositions(),
+                p.getPlayerStatus() != null ? p.getPlayerStatus() : PlayerStatus.AMATEUR,
                 p.getJerseySize(),
                 p.getCoversSize(),
                 p.getGaitersSize(),

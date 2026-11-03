@@ -569,16 +569,17 @@ public class EventService {
                 }
             }
 
-            // Амплуа должно соответствовать роли слота
-            UserPosition needed = switch (s.role()) {
-                case GOALKEEPER -> UserPosition.GOALKEEPER;
-                case DEFENDER -> UserPosition.DEFENDER;
-                case FORWARD -> UserPosition.FORWARD;
-            };
+            // Вратарский слот — только для вратаря. Полевые игроки могут
+            // занимать слоты и защитников, и нападающих; без амплуа — универсал.
             Set<UserPosition> positions = profileRepo.findById(uid)
                     .map(p -> (Set<UserPosition>) new HashSet<>(p.getPositions()))
                     .orElse(Set.of());
-            if (!positions.contains(needed)) {
+            boolean positionAllowed = positions.isEmpty() || switch (s.role()) {
+                case GOALKEEPER -> positions.contains(UserPosition.GOALKEEPER);
+                case DEFENDER, FORWARD -> positions.contains(UserPosition.DEFENDER)
+                        || positions.contains(UserPosition.FORWARD);
+            };
+            if (!positionAllowed) {
                 throw new BadRequestException(
                         "Амплуа игрока не соответствует слоту " + s.role() + ": userId=" + uid);
             }

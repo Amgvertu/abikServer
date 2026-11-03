@@ -8,6 +8,7 @@ import info.prorabka.abik.server.geo.entity.Region;
 import info.prorabka.abik.server.geo.service.GeoService;
 import info.prorabka.abik.server.user.dto.UserProfileRequest;
 import info.prorabka.abik.server.user.dto.UserProfileResponse;
+import info.prorabka.abik.server.user.entity.PlayerStatus;
 import info.prorabka.abik.server.user.entity.UserProfile;
 import info.prorabka.abik.server.user.repository.UserProfileRepository;
 import org.slf4j.Logger;
@@ -58,6 +59,9 @@ public class UserProfileService {
         profile.setHeightCm(req.heightCm());
         profile.setWeightKg(req.weightKg());
         profile.setStickHand(req.stickHand());
+        profile.setPlayerStatus(req.playerStatus() != null
+                ? req.playerStatus()
+                : (profile.getPlayerStatus() != null ? profile.getPlayerStatus() : PlayerStatus.AMATEUR));
         profile.setJerseySize(trimOrNull(req.jerseySize()));
         profile.setCoversSize(trimOrNull(req.coversSize()));
         profile.setGaitersSize(trimOrNull(req.gaitersSize()));

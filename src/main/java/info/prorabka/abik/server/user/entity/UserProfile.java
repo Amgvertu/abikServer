@@ -51,6 +51,11 @@ public class UserProfile {
     @Column(name = "stick_hand", nullable = false, length = 10)
     private StickHand stickHand;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "player_status", nullable = false, length = 30)
+    @Builder.Default
+    private PlayerStatus playerStatus = PlayerStatus.AMATEUR;
+
     @Column(name = "jersey_size", length = 20)
     private String jerseySize;
 
