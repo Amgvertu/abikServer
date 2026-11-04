@@ -3,6 +3,10 @@ spring:
     name: abik-server
   profiles:
     active: dev          # для локальной разработки. На малинке переопределим через systemd.
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   jpa:
     hibernate:
       ddl-auto: validate # Flyway создаёт схему, Hibernate её только проверяет

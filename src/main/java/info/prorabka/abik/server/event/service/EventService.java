@@ -225,7 +225,7 @@ public class EventService {
 
     @Transactional
     public EventDetailResponse create(Long teamId, Long actor, EventCreateRequest req) {
-        teamMemberService.requireManager(teamId, actor);
+        teamMemberService.requireEventManager(teamId, actor);
         validateSectionType(req.section(), req.type());
 
         if (req.recurrence() == null) {
@@ -301,7 +301,7 @@ public class EventService {
     @Transactional
     public EventDetailResponse update(Long teamId, Long eventId, Long actor,
                                       EventUpdateRequest req, String scope) {
-        teamMemberService.requireManager(teamId, actor);
+        teamMemberService.requireEventManager(teamId, actor);
         Event e = getEventOrThrow(eventId);
         if (!e.getTeamId().equals(teamId)) throw new ForbiddenException("Событие другой команды");
         validateSectionType(req.section(), req.type());
@@ -376,7 +376,7 @@ public class EventService {
 
     @Transactional
     public void delete(Long teamId, Long eventId, Long actor, String scope) {
-        teamMemberService.requireManager(teamId, actor);
+        teamMemberService.requireEventManager(teamId, actor);
         Event e = getEventOrThrow(eventId);
         if (!e.getTeamId().equals(teamId)) throw new ForbiddenException("Событие другой команды");
 
@@ -468,10 +468,7 @@ public class EventService {
 
     @Transactional
     public void setLineup(Long teamId, Long eventId, Long actor, LineupSaveRequest req) {
-        TeamMember actorMember = teamMemberService.requireMember(teamId, actor);
-        if (actorMember.getRole() != MemberRole.OWNER && actorMember.getRole() != MemberRole.ADMIN) {
-            throw new ForbiddenException("Заявку на игру может менять только владелец или админ");
-        }
+        teamMemberService.requireEventManager(teamId, actor);
         Event e = getEventOrThrow(eventId);
         if (!e.getTeamId().equals(teamId)) throw new ForbiddenException("Событие другой команды");
         if (e.getType() == EventType.TRAINING) {

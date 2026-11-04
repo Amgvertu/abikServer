@@ -101,6 +101,13 @@ public class AdminController {
         return ResponseEntity.ok(adminService.listAllTeams());
     }
 
+    @Operation(summary = "Статистика регистраций и создания команд")
+    @GetMapping("/stats")
+    public ResponseEntity<info.prorabka.abik.server.admin.dto.AdminStatsResponse> stats() {
+        requireSuperAdmin();
+        return ResponseEntity.ok(adminService.getStats());
+    }
+
     // ============================================================
     // Справочники
     // ============================================================

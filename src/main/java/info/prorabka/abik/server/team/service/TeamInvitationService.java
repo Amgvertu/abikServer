@@ -63,7 +63,7 @@ public class TeamInvitationService {
     @Transactional
     public InvitationResponse invite(Long teamId, Long actorUserId, String phoneRaw) {
         // Проверяем, что актор — владелец/модератор
-        teamMemberService.requireManager(teamId, actorUserId);
+        teamMemberService.requireMembershipManager(teamId, actorUserId);
 
         // Проверяем, что команда активна
         Team team = teamRepository.findById(teamId)
@@ -127,7 +127,7 @@ public class TeamInvitationService {
     /** Все PENDING-приглашения, отправленные из команды (исходящие). */
     @Transactional
     public List<InvitationResponse> listTeamOutgoing(Long teamId, Long actorUserId) {
-        teamMemberService.requireManager(teamId, actorUserId);
+        teamMemberService.requireMembershipManager(teamId, actorUserId);
         expireOverdue();
         return invitationRepository
                 .findByTeamIdAndStatusOrderByCreatedAtDesc(teamId, InvitationStatus.PENDING)
@@ -196,7 +196,7 @@ public class TeamInvitationService {
         TeamInvitation inv = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new NotFoundException("Приглашение не найдено"));
 
-        teamMemberService.requireManager(inv.getTeamId(), actorUserId);
+        teamMemberService.requireMembershipManager(inv.getTeamId(), actorUserId);
 
         if (inv.getStatus() != InvitationStatus.PENDING) {
             throw new BadRequestException("Приглашение уже обработано");

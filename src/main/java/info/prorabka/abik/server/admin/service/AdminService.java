@@ -97,20 +97,37 @@ public class AdminService {
 
     public List<TeamResponse> listAllTeams() {
         return teamRepository.findAllByOrderByNameAsc().stream()
-                .map(t -> {
-                    // В реальном коде лучше сделать метод в TeamService,
-                    // но для простоты воспользуемся тем же маппингом.
-                    var city = regionRepository.findById(t.getCityId()).orElse(null); // Заглушка
-                    // Примечание: для полноценного ответа нужен доступ к GeoService.
-                    // Пока вернем просто базовые поля через TeamResponse (если он создается в TeamService)
-                    return teamService.getDetail(t.getId(), 0L); // Заглушка, если 0L не админ.
+                .map(team -> {
+                    String cityName = cityRepository.findById(team.getCityId())
+                            .map(City::getName).orElse(null);
+                    String regionName = regionRepository.findById(team.getHomeRegionId())
+                            .map(Region::getName).orElse(null);
+                    return TeamResponse.from(team, cityName, regionName);
                 })
-                .map(detail -> new TeamResponse(
-                        detail.id(), detail.name(), detail.cityId(), detail.cityName(),
-                        detail.homeRegionId(), detail.homeRegionName(), detail.logoUrl(),
-                        detail.status(), detail.createdAt()
-                ))
                 .toList();
+    }
+
+    public info.prorabka.abik.server.admin.dto.AdminStatsResponse getStats() {
+        var users = userRepository.findAll();
+        var teams = teamRepository.findAll();
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate week = today.minusDays(6);
+        java.time.LocalDate month = today.minusDays(29);
+        java.util.List<info.prorabka.abik.server.admin.dto.AdminStatsResponse.DailyStat> daily = new java.util.ArrayList<>();
+        for (int i = 29; i >= 0; i--) {
+            java.time.LocalDate day = today.minusDays(i);
+            long userCount = users.stream().filter(u -> u.getCreatedAt() != null && u.getCreatedAt().toLocalDate().equals(day)).count();
+            long teamCount = teams.stream().filter(t -> t.getCreatedAt() != null && t.getCreatedAt().toLocalDate().equals(day)).count();
+            daily.add(new info.prorabka.abik.server.admin.dto.AdminStatsResponse.DailyStat(day, userCount, teamCount));
+        }
+        return new info.prorabka.abik.server.admin.dto.AdminStatsResponse(
+                users.size(), teams.size(),
+                users.stream().filter(u -> u.getCreatedAt() != null && !u.getCreatedAt().toLocalDate().isBefore(today)).count(),
+                users.stream().filter(u -> u.getCreatedAt() != null && !u.getCreatedAt().toLocalDate().isBefore(week)).count(),
+                users.stream().filter(u -> u.getCreatedAt() != null && !u.getCreatedAt().toLocalDate().isBefore(month)).count(),
+                teams.stream().filter(t -> t.getCreatedAt() != null && !t.getCreatedAt().toLocalDate().isBefore(today)).count(),
+                teams.stream().filter(t -> t.getCreatedAt() != null && !t.getCreatedAt().toLocalDate().isBefore(week)).count(),
+                teams.stream().filter(t -> t.getCreatedAt() != null && !t.getCreatedAt().toLocalDate().isBefore(month)).count(), daily);
     }
 
     // ============================================================

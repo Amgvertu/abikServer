@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/v1/auth/**",
                                 "/v1/geo/**",
                                 "/v1/files/**",
+                                "/ws/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"

@@ -115,7 +115,7 @@ public class TeamService {
 
     @Transactional
     public TeamDetailResponse update(Long teamId, Long actorUserId, TeamUpdateRequest req) {
-        teamMemberService.requireManager(teamId, actorUserId);
+        teamMemberService.requireOwner(teamId, actorUserId);
 
         Team team = getTeamOrThrow(teamId);
         if (team.getStatus() == TeamStatus.ARCHIVED) {

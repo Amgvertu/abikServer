@@ -63,13 +63,33 @@ public class TeamMemberService {
                 .orElseThrow(() -> new ForbiddenException("Вы не являетесь участником команды"));
     }
 
-    /** Владелец или модератор. Иначе — 403. */
+    /** Финансы и состав регулярки: владелец, администратор или модератор. */
     public TeamMember requireManager(Long teamId, Long userId) {
         TeamMember member = requireMember(teamId, userId);
         if (member.getRole() != MemberRole.OWNER
-                && member.getRole() != MemberRole.ADMIN           // ← добавить
+                && member.getRole() != MemberRole.ADMIN
                 && member.getRole() != MemberRole.MODERATOR) {
             throw new ForbiddenException("Недостаточно прав: нужна роль владельца, админа или модератора");
+        }
+        return member;
+    }
+
+    /** События, цвета и звенья: владелец, администратор или тренер. */
+    public TeamMember requireEventManager(Long teamId, Long userId) {
+        TeamMember member = requireMember(teamId, userId);
+        if (member.getRole() != MemberRole.OWNER
+                && member.getRole() != MemberRole.ADMIN
+                && !Boolean.TRUE.equals(member.getIsTrainer())) {
+            throw new ForbiddenException("Недостаточно прав для управления событием");
+        }
+        return member;
+    }
+
+    /** Приглашение и исключение участников: только владелец или администратор. */
+    public TeamMember requireMembershipManager(Long teamId, Long userId) {
+        TeamMember member = requireMember(teamId, userId);
+        if (member.getRole() != MemberRole.OWNER && member.getRole() != MemberRole.ADMIN) {
+            throw new ForbiddenException("Управлять участниками могут владелец и администратор");
         }
         return member;
     }
@@ -152,7 +172,7 @@ public class TeamMemberService {
     @Transactional
     public TeamMemberResponse setJerseyNumber(Long teamId, Long targetUserId, Long actorUserId,
                                               SetJerseyNumberRequest req) {
-        requireManager(teamId, actorUserId);
+        requireMembershipManager(teamId, actorUserId);
 
         TeamMember target = requireMember(teamId, targetUserId);
 
@@ -176,7 +196,7 @@ public class TeamMemberService {
     /** Исключить участника. Долги сохраняются, статус EXCLUDED. */
     @Transactional
     public void excludeMember(Long teamId, Long targetUserId, Long actorUserId) {
-        TeamMember actor = requireManager(teamId, actorUserId);
+        TeamMember actor = requireMembershipManager(teamId, actorUserId);
         TeamMember target = requireMember(teamId, targetUserId);
 
         // Модератор не может исключить владельца или другого модератора
@@ -217,7 +237,7 @@ public class TeamMemberService {
     /** Вернуть исключённого участника (или вышедшего) — ACTIVE. */
     @Transactional
     public TeamMemberResponse restoreMember(Long teamId, Long targetUserId, Long actorUserId) {
-        requireManager(teamId, actorUserId);
+        requireMembershipManager(teamId, actorUserId);
 
         TeamMember target = teamMemberRepository.findByTeamIdAndUserId(teamId, targetUserId)
                 .orElseThrow(() -> new NotFoundException("Участник не найден в команде"));
