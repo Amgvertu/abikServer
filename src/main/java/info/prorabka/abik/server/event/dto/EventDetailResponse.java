@@ -27,5 +27,7 @@ public record EventDetailResponse(
         String chargeDistribution,
         Long chargeTemplateId,
         java.util.Set<Long> chargeMemberIds,
-        Boolean charged
+        Boolean charged,
+        Long lineupRevision,
+        Long sweaterRevision
 ) {}

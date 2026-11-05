@@ -90,6 +90,15 @@ public class Event {
     @Column(name = "updated_at", nullable = false)
     private OffsetDateTime updatedAt;
 
+    /** Независимые версии для безопасной синхронизации офлайн-правок. */
+    @Column(name = "lineup_revision", nullable = false)
+    @Builder.Default
+    private Long lineupRevision = 0L;
+
+    @Column(name = "sweater_revision", nullable = false)
+    @Builder.Default
+    private Long sweaterRevision = 0L;
+
     @PrePersist
     void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();

@@ -211,7 +211,9 @@ public class EventService {
                 e.getChargeDistribution(),
                 e.getChargeTemplateId(),
                 e.getChargeMemberIds(),
-                e.getChargedAt() != null);
+                e.getChargedAt() != null,
+                e.getLineupRevision(),
+                e.getSweaterRevision());
     }
 
     private LineupSlotDto toSlot(EventLineup l) {
@@ -462,6 +464,38 @@ public class EventService {
             sweaterRepo.save(EventSweater.builder()
                     .eventId(eventId).userId(item.userId()).color(item.color()).build());
         }
+        e.setSweaterRevision(e.getSweaterRevision() + 1);
+        eventRepo.save(e);
+    }
+
+    /** Проверка версии именно цветов, чтобы правка звеньев не создавала ложный конфликт. */
+    public void requireOfflineSweaterRevision(Long teamId, Long eventId, Long expectedRevision) {
+        Event event = requireOwnedEvent(teamId, eventId);
+        requireRevision(expectedRevision, event.getSweaterRevision(), "цветов маек");
+    }
+
+    /** Проверка версии заявки перед записью офлайн-звеньев. */
+    public void requireOfflineLineupRevision(Long teamId, Long eventId, Long expectedRevision) {
+        Event event = requireOwnedEvent(teamId, eventId);
+        requireRevision(expectedRevision, event.getLineupRevision(), "звеньев");
+    }
+
+    private Event requireOwnedEvent(Long teamId, Long eventId) {
+        Event event = getEventOrThrow(eventId);
+        if (!event.getTeamId().equals(teamId)) {
+            throw new ForbiddenException("Событие другой команды");
+        }
+        return event;
+    }
+
+    private void requireRevision(Long expected, Long actual, String label) {
+        if (expected == null) {
+            throw new BadRequestException("Не указана исходная версия " + label);
+        }
+        if (!expected.equals(actual)) {
+            throw new info.prorabka.abik.server.common.exception.OfflineConflictException(
+                    "Серверная версия " + label + " изменилась. Локальные изменения не применены.");
+        }
     }
 
     // ====== Заявка на игру (lineup) ======
@@ -591,6 +625,8 @@ public class EventService {
                     .slotNumber(s.slotNumber().shortValue())
                     .build());
         }
+        e.setLineupRevision(e.getLineupRevision() + 1);
+        eventRepo.save(e);
     }
 
     private void requireLineNumber(LineupSlotDto s) {
