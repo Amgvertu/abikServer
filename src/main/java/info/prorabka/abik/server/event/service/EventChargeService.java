@@ -245,16 +245,10 @@ public class EventChargeService {
                 "perPersonKopecks", perPerson);
     }
 
-    /**
-     * Лимит основного состава: requiredPlayers для регулярки/двухсторонки,
-     * иначе null (лимита нет — все проголосовавшие «Иду» считаются составом).
-     */
+    /** Без положительного requiredPlayers резерва нет — все «Иду» в составе. */
     private Integer mainSquadLimit(Event e) {
         if (e.getRequiredPlayers() == null || e.getRequiredPlayers() <= 0) return null;
-        if (e.getSection() == EventSection.REGULAR || e.getSection() == EventSection.SCRIMMAGE) {
-            return e.getRequiredPlayers();
-        }
-        return null;
+        return e.getRequiredPlayers();
     }
 
     /** Игрок — вратарь (по амплуа в профиле). */

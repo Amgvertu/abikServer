@@ -1,8 +1,13 @@
 package info.prorabka.abik.server.notification.controller;
 
+import info.prorabka.abik.server.common.exception.BadRequestException;
 import info.prorabka.abik.server.common.security.SecurityUtils;
 import info.prorabka.abik.server.notification.dto.NotificationResponse;
+import info.prorabka.abik.server.notification.dto.NotificationSettingsDto;
+import info.prorabka.abik.server.notification.entity.UserNotificationSettings;
+import info.prorabka.abik.server.notification.repository.UserNotificationSettingsRepository;
 import info.prorabka.abik.server.notification.service.NotificationService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,9 +28,40 @@ import java.util.Map;
 public class NotificationsController {
 
     private final NotificationService notificationService;
+    private final UserNotificationSettingsRepository settingsRepository;
 
-    public NotificationsController(NotificationService notificationService) {
+    public NotificationsController(NotificationService notificationService,
+                                   UserNotificationSettingsRepository settingsRepository) {
         this.notificationService = notificationService;
+        this.settingsRepository = settingsRepository;
+    }
+
+    @Operation(summary = "Мои настройки напоминаний о событиях")
+    @GetMapping("/settings")
+    public ResponseEntity<NotificationSettingsDto> settings() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        UserNotificationSettings settings = settingsRepository.findById(userId)
+                .orElseGet(() -> UserNotificationSettings.defaults(userId));
+        return ResponseEntity.ok(NotificationSettingsDto.from(settings));
+    }
+
+    @Operation(summary = "Сохранить настройки напоминаний о событиях")
+    @PutMapping("/settings")
+    public ResponseEntity<NotificationSettingsDto> saveSettings(
+            @Valid @RequestBody NotificationSettingsDto request) {
+        long latestOffset = (long) (request.reminderCount() - 1) * request.intervalMinutes();
+        if (latestOffset >= request.leadTimeMinutes()) {
+            throw new BadRequestException(
+                    "Последнее напоминание должно быть запланировано до начала события");
+        }
+        Long userId = SecurityUtils.getCurrentUserId();
+        UserNotificationSettings settings = settingsRepository.findById(userId)
+                .orElseGet(() -> UserNotificationSettings.defaults(userId));
+        settings.setRemindersEnabled(request.remindersEnabled());
+        settings.setReminderCount(request.reminderCount());
+        settings.setLeadTimeMinutes(request.leadTimeMinutes());
+        settings.setIntervalMinutes(request.intervalMinutes());
+        return ResponseEntity.ok(NotificationSettingsDto.from(settingsRepository.save(settings)));
     }
 
     @Operation(summary = "Мои уведомления")

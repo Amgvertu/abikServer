@@ -18,9 +18,8 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findBySeriesIdAndEventDateGreaterThanEqual(Long seriesId, LocalDate from);
 
-    /** События нужного раздела на конкретную дату (для напоминаний). */
-    List<Event> findByEventDateAndSectionAndStatus(
-            LocalDate eventDate, EventSection section, String status);
+    /** Активные события в диапазоне дат для персональных напоминаний. */
+    List<Event> findByEventDateBetweenAndStatus(LocalDate from, LocalDate to, String status);
 
     /**
      * Завершившиеся события с настроенным, но ещё не выполненным начислением

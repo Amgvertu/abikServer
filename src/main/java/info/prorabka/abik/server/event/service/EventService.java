@@ -691,16 +691,10 @@ public class EventService {
         }
     }
 
-    /**
-     * Лимит основного состава: задан только у регулярки/двухсторонки
-     * с requiredPlayers > 0. У остальных событий резерва нет.
-     */
+    /** Положительный requiredPlayers включает резерв для любого типа события. */
     private Integer mainSquadLimit(Event e) {
         if (e.getRequiredPlayers() == null || e.getRequiredPlayers() <= 0) return null;
-        if (e.getSection() == EventSection.REGULAR || e.getSection() == EventSection.SCRIMMAGE) {
-            return e.getRequiredPlayers();
-        }
-        return null;
+        return e.getRequiredPlayers();
     }
 
     /**
