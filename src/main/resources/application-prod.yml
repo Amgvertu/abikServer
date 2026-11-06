@@ -17,6 +17,15 @@ logging:
     name: /home/amgvertu/projects/abik/logs/abik.log
 
 app:
+  sms:
+    provider: android-gateway
+    gateway:
+      enabled: true
+      rustore:
+        enabled: true
+      fcm:
+        enabled: true
+        service-account-path: "file:/home/amgvertu/projects/abik/config/firebase-service-account-sms-gateway.json"
   files:
     dir: "/home/amgvertu/projects/abik/uploads"
   fcm:

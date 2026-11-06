@@ -43,6 +43,7 @@ public class SecurityConfig {
                                 "/v1/geo/**",
                                 "/v1/files/**",
                                 "/ws/**",
+                                "/ws-sms/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**"

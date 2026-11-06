@@ -53,7 +53,7 @@ public class SmsCodeService {
 
         smsCodeRepository.save(smsCode);
 
-        String text = "Ваш код подтверждения: " + code + ". Действует " + TTL_MINUTES + " мин.";
+        String text = "abik: код подтверждения " + code + ". Действует " + TTL_MINUTES + " мин.";
         smsSender.send(phone, text, purpose);
 
         log.debug("Сгенерирован SMS-код для {} ({})", phone, purpose);

@@ -32,6 +32,17 @@ app:
     secret: "aB7xK9mN2pQ4wR8tY1uI3oP5aS6dF7gH9jL0zXcVbNmQwErTyUiOpAsD"
   sms:
     provider: mock
+    gateway:
+      enabled: false
+      phone: ${SMS_GATEWAY_PHONE:+79999999999}
+      password: ${SMS_GATEWAY_PASSWORD:fghvbn123rty}
+      rustore:
+        enabled: false
+        api-key: cWjWEMAmweKOf6CxRfbMpqqHQLA2UuMVxlojwFZGPjBDrCGwawmTrAxh561rnNdm
+        push-url: "https://vkpns.rustore.ru/v1/projects/McgN1q5Z1TpHNgUM54Ag-C96s4C8jsEf/messages:send"
+      fcm:
+        enabled: false
+        service-account-path: ${SMS_GATEWAY_FCM_SERVICE_ACCOUNT_PATH:}
   files:
     dir: "./uploads"                 # папка для аватаров и логотипов
     max-size-bytes: 5242880          # 5 МБ

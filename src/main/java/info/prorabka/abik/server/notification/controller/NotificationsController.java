@@ -2,7 +2,11 @@ package info.prorabka.abik.server.notification.controller;
 
 import info.prorabka.abik.server.common.security.SecurityUtils;
 import info.prorabka.abik.server.notification.dto.NotificationResponse;
+import info.prorabka.abik.server.notification.dto.NotificationSettingsDto;
+import info.prorabka.abik.server.notification.entity.UserNotificationSettings;
+import info.prorabka.abik.server.notification.repository.UserNotificationSettingsRepository;
 import info.prorabka.abik.server.notification.service.NotificationService;
+import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -23,9 +27,35 @@ import java.util.Map;
 public class NotificationsController {
 
     private final NotificationService notificationService;
+    private final UserNotificationSettingsRepository settingsRepository;
 
-    public NotificationsController(NotificationService notificationService) {
+    public NotificationsController(NotificationService notificationService,
+                                   UserNotificationSettingsRepository settingsRepository) {
         this.notificationService = notificationService;
+        this.settingsRepository = settingsRepository;
+    }
+
+    @Operation(summary = "Мои настройки напоминаний о событиях")
+    @GetMapping("/settings")
+    public ResponseEntity<NotificationSettingsDto> settings() {
+        Long userId = SecurityUtils.getCurrentUserId();
+        UserNotificationSettings settings = settingsRepository.findById(userId)
+                .orElseGet(() -> UserNotificationSettings.defaults(userId));
+        return ResponseEntity.ok(NotificationSettingsDto.from(settings));
+    }
+
+    @Operation(summary = "Сохранить настройки напоминаний о событиях")
+    @PutMapping("/settings")
+    public ResponseEntity<NotificationSettingsDto> saveSettings(
+            @Valid @RequestBody NotificationSettingsDto request) {
+        Long userId = SecurityUtils.getCurrentUserId();
+        UserNotificationSettings settings = settingsRepository.findById(userId)
+                .orElseGet(() -> UserNotificationSettings.defaults(userId));
+        settings.setRemindersEnabled(request.remindersEnabled());
+        settings.setReminderCount(1);
+        settings.setLeadTimeMinutes(request.leadTimeMinutes());
+        settings.setIntervalMinutes(60);
+        return ResponseEntity.ok(NotificationSettingsDto.from(settingsRepository.save(settings)));
     }
 
     @Operation(summary = "Мои уведомления")
