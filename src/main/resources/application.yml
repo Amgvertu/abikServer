@@ -38,7 +38,7 @@ app:
       password: ${SMS_GATEWAY_PASSWORD:fghvbn123rty}
       rustore:
         enabled: false
-        api-key: cWjWEMAmweKOf6CxRfbMpqqHQLA2UuMVxlojwFZGPjBDrCGwawmTrAxh561rnNdm
+        api-key: ${SMS_GATEWAY_RUSTORE_API_KEY:}
         push-url: "https://vkpns.rustore.ru/v1/projects/McgN1q5Z1TpHNgUM54Ag-C96s4C8jsEf/messages:send"
       fcm:
         enabled: false
