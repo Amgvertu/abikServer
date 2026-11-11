@@ -27,5 +27,9 @@ public enum NotificationType {
     ROSTER_REMOVED,
     TRAINER_ASSIGNED,
     /** Напоминание о тренировке накануне (за день до события). */
-    EVENT_REMINDER
+    EVENT_REMINDER,
+    /** Напоминание команде о завтрашнем празднике. */
+    HOLIDAY_REMINDER,
+    /** Персональное поздравление в день праздника. */
+    HOLIDAY_GREETING
 }

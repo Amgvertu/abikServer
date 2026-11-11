@@ -11,4 +11,5 @@ import java.util.List;
 public interface EventSweaterRepository extends JpaRepository<EventSweater, EventSweaterId> {
     List<EventSweater> findByEventId(Long eventId);
     void deleteByEventId(Long eventId);
+    long deleteByEventIdAndUserId(Long eventId, Long userId);
 }

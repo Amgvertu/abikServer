@@ -2,6 +2,7 @@ package info.prorabka.abik.server.team.service;
 
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
+import info.prorabka.abik.server.event.service.EventParticipationService;
 import info.prorabka.abik.server.notification.service.NotificationService;
 import info.prorabka.abik.server.team.dto.MemberDetailsResponse;
 import info.prorabka.abik.server.team.dto.SetJerseyNumberRequest;
@@ -39,17 +40,20 @@ public class TeamMemberService {
     private final UserProfileRepository userProfileRepository;
     private final NotificationService notificationService;
     private final UserProfileService userProfileService;
+    private final EventParticipationService participationService;
 
     public TeamMemberService(TeamMemberRepository teamMemberRepository,
                              UserRepository userRepository,
                              UserProfileRepository userProfileRepository,
                              NotificationService notificationService,
-                             UserProfileService userProfileService) {
+                             UserProfileService userProfileService,
+                             EventParticipationService participationService) {
         this.teamMemberRepository = teamMemberRepository;
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.notificationService = notificationService;
         this.userProfileService = userProfileService;
+        this.participationService = participationService;
     }
 
     // ============================================================
@@ -209,6 +213,7 @@ public class TeamMemberService {
             throw new ForbiddenException("Владелец не может быть исключён. Сначала передайте владение.");
         }
 
+        participationService.removeFromTeam(teamId, targetUserId);
         target.setStatus(MemberStatus.EXCLUDED);
         target.setExcludedAt(OffsetDateTime.now());
         target.setJerseyNumber(null);
@@ -227,6 +232,7 @@ public class TeamMemberService {
                     "Владелец не может покинуть команду. Передайте владение или архивируйте команду.");
         }
 
+        participationService.removeFromTeam(teamId, userId);
         member.setStatus(MemberStatus.LEFT);
         member.setLeftAt(OffsetDateTime.now());
         member.setJerseyNumber(null);

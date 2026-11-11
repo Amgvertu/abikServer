@@ -16,6 +16,14 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findBySeriesId(Long seriesId);
 
+    List<Event> findByVoterListId(Long voterListId);
+
+    List<Event> findByTeamIdAndStatusAndEventDateGreaterThanEqual(
+            Long teamId, String status, LocalDate from);
+
+    List<Event> findByVoterListIdAndStatusAndEventDateGreaterThanEqual(
+            Long voterListId, String status, LocalDate from);
+
     List<Event> findBySeriesIdAndEventDateGreaterThanEqual(Long seriesId, LocalDate from);
 
     /** Активные события в диапазоне дат для персональных напоминаний. */

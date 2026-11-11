@@ -19,6 +19,8 @@ public interface ChampionshipRosterRepository extends JpaRepository<Championship
 
     Optional<ChampionshipRoster> findByTeamIdAndSeasonAndUserId(Long teamId, String season, Long userId);
 
+    List<ChampionshipRoster> findByTeamIdAndUserId(Long teamId, Long userId);
+
     @Query("SELECT DISTINCT r.season FROM ChampionshipRoster r WHERE r.teamId = :teamId ORDER BY r.season DESC")
     List<String> findDistinctSeasonsByTeamId(@Param("teamId") Long teamId);
 }

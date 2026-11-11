@@ -21,6 +21,10 @@ public class Event {
     @Column(name = "series_id")
     private Long seriesId;
 
+    /** Именованный список, ограничивающий круг голосующих; null — вся команда. */
+    @Column(name = "voter_list_id")
+    private Long voterListId;
+
     @Column(nullable = false, length = 200)
     private String title;
 

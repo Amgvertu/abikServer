@@ -23,5 +23,6 @@ public record EventUpdateRequest(
         Long chargeAmountKopecks,
         String chargeDistribution,
         Long chargeTemplateId,
-        Set<Long> chargeMemberIds
+        Set<Long> chargeMemberIds,
+        Long voterListId
 ) {}

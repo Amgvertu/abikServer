@@ -29,13 +29,16 @@ public class ChargeListService {
     private final ChargeListRepository listRepository;
     private final TeamMemberService teamMemberService;
     private final TeamMemberRepository teamMemberRepository;
+    private final info.prorabka.abik.server.event.service.EventParticipationService participationService;
 
     public ChargeListService(ChargeListRepository listRepository,
                              TeamMemberService teamMemberService,
-                             TeamMemberRepository teamMemberRepository) {
+                             TeamMemberRepository teamMemberRepository,
+                             info.prorabka.abik.server.event.service.EventParticipationService participationService) {
         this.listRepository = listRepository;
         this.teamMemberService = teamMemberService;
         this.teamMemberRepository = teamMemberRepository;
+        this.participationService = participationService;
     }
 
     public List<ChargeListResponse> list(Long teamId, Long actor) {
@@ -48,7 +51,7 @@ public class ChargeListService {
     @Transactional
     public ChargeListResponse create(Long teamId, Long actor, ChargeListRequest req) {
         teamMemberService.requireManager(teamId, actor);
-        Set<Long> memberIds = validateMembers(teamId, req.memberIds());
+        Set<Long> memberIds = validateMembers(teamId, req.memberIds(), Set.of());
         ChargeList saved = listRepository.save(ChargeList.builder()
                 .teamId(teamId)
                 .name(req.name().trim())
@@ -61,15 +64,25 @@ public class ChargeListService {
     public ChargeListResponse update(Long teamId, Long listId, Long actor, ChargeListRequest req) {
         teamMemberService.requireManager(teamId, actor);
         ChargeList list = getListOrThrow(teamId, listId);
+        Set<Long> previousIds = new HashSet<>(list.getMemberIds());
+        Set<Long> updatedIds = validateMembers(teamId, req.memberIds(), previousIds);
         list.setName(req.name().trim());
-        list.setMemberIds(validateMembers(teamId, req.memberIds()));
-        return toResponse(listRepository.save(list));
+        list.setMemberIds(updatedIds);
+        ChargeListResponse response = toResponse(listRepository.save(list));
+
+        Set<Long> removedIds = new HashSet<>(previousIds);
+        removedIds.removeAll(updatedIds);
+        for (Long removedUserId : removedIds) {
+            participationService.removeFromList(listId, removedUserId);
+        }
+        return response;
     }
 
     @Transactional
     public void delete(Long teamId, Long listId, Long actor) {
         teamMemberService.requireManager(teamId, actor);
         ChargeList list = getListOrThrow(teamId, listId);
+        participationService.detachList(listId);
         listRepository.delete(list);
     }
 
@@ -82,21 +95,30 @@ public class ChargeListService {
         return list;
     }
 
-    /** Все участники списка должны быть активными членами команды. */
-    private Set<Long> validateMembers(Long teamId, Set<Long> memberIds) {
+    /**
+     * Проверяет новые идентификаторы и молча вычищает неактивные записи,
+     * оставшиеся в старом списке до введения очистки при исключении из команды.
+     */
+    private Set<Long> validateMembers(Long teamId, Set<Long> memberIds, Set<Long> previousIds) {
         if (memberIds == null || memberIds.isEmpty()) {
             throw new BadRequestException("Выберите хотя бы одного участника");
         }
         Set<Long> activeIds = teamMemberRepository
                 .findByTeamIdAndStatusOrderByJoinedAtAsc(teamId, MemberStatus.ACTIVE)
                 .stream().map(TeamMember::getUserId).collect(Collectors.toSet());
+        Set<Long> result = new HashSet<>();
         for (Long uid : memberIds) {
-            if (!activeIds.contains(uid)) {
+            if (activeIds.contains(uid)) {
+                result.add(uid);
+            } else if (!previousIds.contains(uid)) {
                 throw new BadRequestException(
                         "Участник не является активным членом команды: userId=" + uid);
             }
         }
-        return new HashSet<>(memberIds);
+        if (result.isEmpty()) {
+            throw new BadRequestException("Выберите хотя бы одного активного участника");
+        }
+        return result;
     }
 
     private ChargeListResponse toResponse(ChargeList list) {

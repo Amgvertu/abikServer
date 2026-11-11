@@ -29,5 +29,6 @@ public record EventDetailResponse(
         java.util.Set<Long> chargeMemberIds,
         Boolean charged,
         Long lineupRevision,
-        Long sweaterRevision
+        Long sweaterRevision,
+        Long voterListId
 ) {}

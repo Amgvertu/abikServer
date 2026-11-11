@@ -1,5 +1,7 @@
 package info.prorabka.abik.server.event.service;
 
+import info.prorabka.abik.server.charge.entity.ChargeList;
+import info.prorabka.abik.server.charge.repository.ChargeListRepository;
 import info.prorabka.abik.server.common.exception.BadRequestException;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
@@ -48,6 +50,8 @@ public class EventService {
     private final UserProfileRepository profileRepo;
     private final ChampionshipRosterRepository rosterRepo;
     private final NotificationService notificationService;
+    private final ChargeListRepository chargeListRepo;
+    private final EventParticipationService participationService;
 
     public EventService(EventRepository eventRepo,
                         EventSeriesRepository seriesRepo,
@@ -59,7 +63,9 @@ public class EventService {
                         TeamRepository teamRepo,
                         UserProfileRepository profileRepo,
                         ChampionshipRosterRepository rosterRepo,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        ChargeListRepository chargeListRepo,
+                        EventParticipationService participationService) {
         this.eventRepo = eventRepo;
         this.seriesRepo = seriesRepo;
         this.voteRepo = voteRepo;
@@ -71,6 +77,8 @@ public class EventService {
         this.profileRepo = profileRepo;
         this.rosterRepo = rosterRepo;
         this.notificationService = notificationService;
+        this.chargeListRepo = chargeListRepo;
+        this.participationService = participationService;
     }
 
     // ====== Чтение ======
@@ -213,7 +221,8 @@ public class EventService {
                 e.getChargeMemberIds(),
                 e.getChargedAt() != null,
                 e.getLineupRevision(),
-                e.getSweaterRevision());
+                e.getSweaterRevision(),
+                e.getVoterListId());
     }
 
     private LineupSlotDto toSlot(EventLineup l) {
@@ -229,6 +238,7 @@ public class EventService {
     public EventDetailResponse create(Long teamId, Long actor, EventCreateRequest req) {
         teamMemberService.requireEventManager(teamId, actor);
         validateSectionType(req.section(), req.type());
+        validateVoterList(teamId, req.voterListId());
 
         if (req.recurrence() == null) {
             Event e = eventRepo.save(Event.builder()
@@ -242,6 +252,7 @@ public class EventService {
                     .chargeDistribution(req.chargeDistribution())
                     .chargeTemplateId(req.chargeTemplateId())
                     .chargeMemberIds(toIdSet(req.chargeMemberIds()))
+                    .voterListId(req.voterListId())
                     .status("ACTIVE").createdBy(actor).build());
             notifyCreated(teamId, actor, e, false);
             return getDetail(teamId, e.getId(), actor);
@@ -286,6 +297,7 @@ public class EventService {
                         .chargeDistribution(req.chargeDistribution())
                         .chargeTemplateId(req.chargeTemplateId())
                         .chargeMemberIds(toIdSet(req.chargeMemberIds()))
+                        .voterListId(req.voterListId())
                         .status("ACTIVE").createdBy(actor).build());
                 if (first == null) first = saved;
             }
@@ -307,6 +319,7 @@ public class EventService {
         Event e = getEventOrThrow(eventId);
         if (!e.getTeamId().equals(teamId)) throw new ForbiddenException("Событие другой команды");
         validateSectionType(req.section(), req.type());
+        ChargeList voterList = validateVoterList(teamId, req.voterListId());
 
         boolean changed = significantChanged(e, req);
 
@@ -323,9 +336,13 @@ public class EventService {
         e.setChargeDistribution(req.chargeDistribution());
         e.setChargeTemplateId(req.chargeTemplateId());
         e.setChargeMemberIds(toIdSet(req.chargeMemberIds()));
+        e.setVoterListId(req.voterListId());
         // Настройки могли измениться — разрешаем начислить заново
         e.setChargedAt(null);
         eventRepo.save(e);
+        if (voterList != null) {
+            participationService.removeUsersNotInList(e, voterList.getMemberIds());
+        }
 
         if ("series".equals(scope) && e.getSeriesId() != null) {
             // Обновить шаблон серии
@@ -355,8 +372,12 @@ public class EventService {
                 f.setChargeDistribution(req.chargeDistribution());
                 f.setChargeTemplateId(req.chargeTemplateId());
                 f.setChargeMemberIds(toIdSet(req.chargeMemberIds()));
+                f.setVoterListId(req.voterListId());
                 f.setChargedAt(null);
                 eventRepo.save(f);
+                if (voterList != null) {
+                    participationService.removeUsersNotInList(f, voterList.getMemberIds());
+                }
             }
         }
 
@@ -407,6 +428,14 @@ public class EventService {
         // Опрос закрывается в указанное время события (оно же — момент окончания)
         if (isEventPast(e)) {
             throw new BadRequestException("Опрос завершён: событие уже прошло");
+        }
+        if (e.getVoterListId() != null) {
+            ChargeList voterList = chargeListRepo.findById(e.getVoterListId())
+                    .orElseThrow(() -> new BadRequestException("Список голосующих не найден"));
+            if (!voterList.getMemberIds().contains(actor)) {
+                throw new ForbiddenException(
+                        "Голосовать могут только участники списка, выбранного для этого события");
+            }
         }
 
         // Кто был в основном составе до изменения голоса
@@ -764,6 +793,17 @@ public class EventService {
 
     private Event getEventOrThrow(Long id) {
         return eventRepo.findById(id).orElseThrow(() -> new NotFoundException("Событие не найдено"));
+    }
+
+    /** Список должен существовать и принадлежать той же команде. */
+    private ChargeList validateVoterList(Long teamId, Long voterListId) {
+        if (voterListId == null) return null;
+        ChargeList list = chargeListRepo.findById(voterListId)
+                .orElseThrow(() -> new BadRequestException("Список голосующих не найден"));
+        if (!list.getTeamId().equals(teamId)) {
+            throw new BadRequestException("Список голосующих принадлежит другой команде");
+        }
+        return list;
     }
 
     private String trim(String s) {

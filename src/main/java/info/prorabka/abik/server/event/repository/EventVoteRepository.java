@@ -15,6 +15,8 @@ public interface EventVoteRepository extends JpaRepository<EventVote, EventVoteI
 
     Optional<EventVote> findByEventIdAndUserId(Long eventId, Long userId);
 
+    long deleteByEventIdAndUserId(Long eventId, Long userId);
+
     long countByEventIdAndAnswer(Long eventId,
                                  info.prorabka.abik.server.event.entity.VoteAnswer answer);
 }

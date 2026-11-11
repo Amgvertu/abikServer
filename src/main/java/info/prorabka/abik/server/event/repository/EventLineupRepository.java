@@ -10,4 +10,5 @@ import java.util.List;
 public interface EventLineupRepository extends JpaRepository<EventLineup, Long> {
     List<EventLineup> findByEventId(Long eventId);
     void deleteByEventId(Long eventId);
+    long deleteByEventIdAndUserId(Long eventId, Long userId);
 }

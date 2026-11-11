@@ -30,6 +30,9 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
     /** Проверить, что пользователь — активный участник команды. */
     boolean existsByTeamIdAndUserIdAndStatus(Long teamId, Long userId, MemberStatus status);
 
+    /** Все активные членства — для планировщика праздничных уведомлений. */
+    List<TeamMember> findByStatus(MemberStatus status);
+
     /** Все команды, где пользователь — активный участник. */
     List<TeamMember> findByUserIdAndStatusOrderByJoinedAtDesc(Long userId, MemberStatus status);
 

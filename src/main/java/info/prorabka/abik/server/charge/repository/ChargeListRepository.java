@@ -10,4 +10,6 @@ import java.util.List;
 public interface ChargeListRepository extends JpaRepository<ChargeList, Long> {
 
     List<ChargeList> findByTeamIdOrderByNameAsc(Long teamId);
+
+    List<ChargeList> findByTeamId(Long teamId);
 }
