@@ -26,5 +26,9 @@ public record EventListItemResponse(
         int votesYesTrainers,
         Integer votesYesReserve,
         /** true — я проголосовал «Иду», но попал в резерв. */
-        Boolean myInReserve
+        Boolean myInReserve,
+        /** Активные участники команды или выбранного списка, которые ещё не ответили. */
+        long votesUnanswered,
+        /** Распределённые звенья для компактного отображения в списке событий. */
+        java.util.List<EventListLineupSlotResponse> lineup
 ) {}

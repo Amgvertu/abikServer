@@ -88,6 +88,9 @@ public class EventService {
 
         List<Event> events = eventRepo
                 .findByTeamIdAndEventDateBetweenOrderByEventDateAscTimeOfDayAsc(teamId, from, to);
+        Set<Long> activeMemberIds = teamMemberRepo
+                .findByTeamIdAndStatusOrderByJoinedAtAsc(teamId, MemberStatus.ACTIVE).stream()
+                .map(TeamMember::getUserId).collect(Collectors.toSet());
 
         List<EventListItemResponse> result = new ArrayList<>();
         for (Event e : events) {
@@ -97,12 +100,22 @@ public class EventService {
             long no  = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.NO);
             long maybe = voteRepo.countByEventIdAndAnswer(e.getId(), VoteAnswer.MAYBE);
 
+            List<EventVote> allVotes = voteRepo.findByEventId(e.getId());
+            Set<Long> eligibleIds = new HashSet<>(activeMemberIds);
+            if (e.getVoterListId() != null) {
+                eligibleIds.retainAll(validateVoterList(teamId, e.getVoterListId()).getMemberIds());
+            }
+            long answered = allVotes.stream()
+                    .filter(v -> eligibleIds.contains(v.getUserId()))
+                    .map(EventVote::getUserId).distinct().count();
+            long unanswered = Math.max(0L, eligibleIds.size() - answered);
+
             // Счётчики проголосовавших «Иду» по амплуа: только основной состав
             // (резерв не учитывается — зеркалит детальный экран события).
             // Вратари и тренеры всегда в составе — в лимит requiredPlayers
             // входят только полевые игроки (защитники и нападающие).
             // Тренеры считаются отдельно, их амплуа игнорируется.
-            List<EventVote> yesVotes = voteRepo.findByEventId(e.getId()).stream()
+            List<EventVote> yesVotes = allVotes.stream()
                     .filter(v -> v.getAnswer() == VoteAnswer.YES)
                     .sorted(Comparator.comparing(EventVote::getUpdatedAt))
                     .toList();
@@ -130,13 +143,26 @@ public class EventService {
             Boolean myInReserve = myVote == VoteAnswer.YES && !mainIds.contains(actor)
                     ? Boolean.TRUE : null;
 
+            List<EventListLineupSlotResponse> lineup = lineupRepo.findByEventId(e.getId()).stream()
+                    .sorted(Comparator
+                            .comparing(EventLineup::getLineNumber,
+                                    Comparator.nullsFirst(Comparator.naturalOrder()))
+                            .thenComparing(EventLineup::getRole)
+                            .thenComparing(EventLineup::getSlotNumber))
+                    .map(slot -> new EventListLineupSlotResponse(
+                            slot.getLineNumber(), slot.getSlotNumber(), slot.getRole(), slot.getUserId(),
+                            profileRepo.findById(slot.getUserId())
+                                    .map(p -> (p.getLastName() + " " + p.getFirstName()).trim())
+                                    .orElse("user#" + slot.getUserId())))
+                    .toList();
+
             result.add(new EventListItemResponse(
                     e.getId(), e.getTitle(), e.getSection(), e.getType(),
                     e.getEventDate(), e.getTimeOfDay(),
                     e.getPlace(), myVote, yes, no, maybe,
                     e.getRequiredPlayers(),
                     goalies, defenders, forwards, trainers,
-                    reserveCount, myInReserve));
+                    reserveCount, myInReserve, unanswered, lineup));
         }
         return result;
     }
@@ -617,16 +643,13 @@ public class EventService {
                         "В заявку можно включать только проголосовавших «Иду»: userId=" + uid);
             }
 
-            // Допуск к составу регулярки (текущий сезон команды)
-            if (team.getSeason() != null && !team.getSeason().isBlank()) {
-                ChampionshipRoster rosterEntry = rosterRepo
-                        .findByTeamIdAndSeasonAndUserId(teamId, team.getSeason(), uid)
-                        .orElse(null);
-                if (rosterEntry == null || !"ACTIVE".equals(rosterEntry.getStatus())) {
-                    throw new BadRequestException(
-                            "Игрок не входит в состав регулярки сезона " + team.getSeason()
-                                    + ": userId=" + uid);
-                }
+            // Допуск определяется списком самого события. Если список не выбран,
+            // достаточно активного членства в команде — скрытая привязка к сезону
+            // команды больше не ограничивает сохранение звеньев.
+            if (e.getVoterListId() != null
+                    && !validateVoterList(teamId, e.getVoterListId()).getMemberIds().contains(uid)) {
+                throw new BadRequestException(
+                        "Игрок не входит в выбранный для события список: userId=" + uid);
             }
 
             // Вратарский слот — только для вратаря. Полевые игроки могут
