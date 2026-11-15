@@ -42,6 +42,7 @@ public class SecurityConfig {
                                 "/v1/auth/**",
                                 "/v1/geo/**",
                                 "/v1/files/**",
+                                "/v1/app/releases/latest",
                                 "/ws/**",
                                 "/ws-sms/**",
                                 "/swagger-ui/**",

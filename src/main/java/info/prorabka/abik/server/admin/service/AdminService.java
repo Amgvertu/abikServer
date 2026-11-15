@@ -3,6 +3,7 @@ package info.prorabka.abik.server.admin.service;
 import info.prorabka.abik.server.admin.dto.AdminUserResponse;
 import info.prorabka.abik.server.admin.dto.CreateCityRequest;
 import info.prorabka.abik.server.admin.dto.CreateRegionRequest;
+import info.prorabka.abik.server.auth.service.RefreshTokenService;
 import info.prorabka.abik.server.common.exception.ConflictException;
 import info.prorabka.abik.server.common.exception.ForbiddenException;
 import info.prorabka.abik.server.common.exception.NotFoundException;
@@ -34,17 +35,20 @@ public class AdminService {
     private final CityRepository cityRepository;
     private final TeamRepository teamRepository;
     private final TeamService teamService; // Используем для маппинга команд
+    private final RefreshTokenService refreshTokens;
 
     public AdminService(UserRepository userRepository,
                         RegionRepository regionRepository,
                         CityRepository cityRepository,
                         TeamRepository teamRepository,
-                        TeamService teamService) {
+                        TeamService teamService,
+                        RefreshTokenService refreshTokens) {
         this.userRepository = userRepository;
         this.regionRepository = regionRepository;
         this.cityRepository = cityRepository;
         this.teamRepository = teamRepository;
         this.teamService = teamService;
+        this.refreshTokens = refreshTokens;
     }
 
     // ============================================================
@@ -70,8 +74,14 @@ public class AdminService {
             throw new ConflictException("Пользователь уже удалён");
         }
 
+        if (Boolean.TRUE.equals(user.getIsSuperAdmin())) {
+            throw new ForbiddenException("Нельзя заблокировать суперадмина");
+        }
         user.setStatus(UserStatus.BLOCKED);
+        user.setBlockReason("Заблокировано администратором");
+        user.setBlockedAt(java.time.OffsetDateTime.now());
         User saved = userRepository.save(user);
+        refreshTokens.revokeAll(targetUserId);
         log.info("Суперадмин {} заблокировал пользователя {}", actorUserId, targetUserId);
         return AdminUserResponse.from(saved);
     }
@@ -86,6 +96,8 @@ public class AdminService {
         }
 
         user.setStatus(UserStatus.ACTIVE);
+        user.setBlockReason(null);
+        user.setBlockedAt(null);
         User saved = userRepository.save(user);
         log.info("Суперадмин {} разблокировал пользователя {}", actorUserId, targetUserId);
         return AdminUserResponse.from(saved);

@@ -1,8 +1,11 @@
 package info.prorabka.abik.server.auth.sms;
 
-/** Подтверждение от Android-шлюза о постановке SMS на отправку. */
+/** Подтверждение Android-шлюза: постановка, оператор и итоговая доставка. */
 public record SmsGatewayResponse(
         String requestId,
         boolean success,
-        String errorMessage
+        String errorMessage,
+        String stage,
+        String status,
+        String errorCode
 ) {}

@@ -52,6 +52,12 @@ public class Team {
     @Column(name = "archived_at")
     private OffsetDateTime archivedAt;
 
+    @Column(name = "block_reason", length = 500)
+    private String blockReason;
+
+    @Column(name = "blocked_at")
+    private OffsetDateTime blockedAt;
+
     @PrePersist
     void onCreate() {
         OffsetDateTime now = OffsetDateTime.now();

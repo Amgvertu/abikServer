@@ -31,5 +31,7 @@ public enum NotificationType {
     /** Напоминание команде о завтрашнем празднике. */
     HOLIDAY_REMINDER,
     /** Персональное поздравление в день праздника. */
-    HOLIDAY_GREETING
+    HOLIDAY_GREETING,
+    /** Сообщение администрации сервиса или системное административное уведомление. */
+    ADMIN_MESSAGE
 }

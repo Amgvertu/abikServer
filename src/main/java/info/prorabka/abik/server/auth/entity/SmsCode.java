@@ -32,6 +32,9 @@ public class SmsCode {
     @Column(nullable = false, length = 30)
     private SmsPurpose purpose;
 
+    @Column(name = "request_id", length = 36)
+    private String requestId;
+
     @Column(name = "expires_at", nullable = false)
     private OffsetDateTime expiresAt;
 

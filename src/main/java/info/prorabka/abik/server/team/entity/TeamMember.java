@@ -39,6 +39,7 @@ public class TeamMember {
     private Short jerseyNumber;
 
     @Column(name = "is_trainer", nullable = false)
+    @Builder.Default
     private Boolean isTrainer = false;
 
     @Column(name = "joined_at", nullable = false)

@@ -13,6 +13,9 @@ public record UserResponse(
         Long id,
         String phone,
         UserStatus status,
+        Boolean isSuperAdmin,
+        Boolean isAdAdmin,
+        String blockReason,
         OffsetDateTime createdAt
 ) {
     /** Преобразовать сущность в DTO. */
@@ -21,6 +24,9 @@ public record UserResponse(
                 user.getId(),
                 user.getPhone(),
                 user.getStatus(),
+                user.getIsSuperAdmin(),
+                user.getIsAdAdmin(),
+                user.getBlockReason(),
                 user.getCreatedAt()
         );
     }

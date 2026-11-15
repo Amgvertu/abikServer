@@ -47,6 +47,9 @@ dependencies {
 	// Firebase Admin SDK — для отправки через FCM
 	implementation 'com.google.firebase:firebase-admin:9.4.3'
 
+	// Стандартный Web Push (VAPID) для браузеров и установленной PWA
+	implementation 'nl.martijndwars:web-push:5.1.1'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-flyway-test'
 	testImplementation 'org.springframework.boot:spring-boot-starter-security-test'

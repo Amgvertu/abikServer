@@ -26,6 +26,8 @@ public class CorsConfig {
                 "https://www.abik.info",     // Прод-фронт (с www)
                 "http://localhost:3000",     // React dev-server (по умолчанию)
                 "http://localhost:5173",     // Vite dev-server (по умолчанию)
+                "http://localhost:7100",     // Локальный preview abik-web
+                "http://127.0.0.1:7100",    // Локальный preview abik-web
                 "http://localhost:8081"      // Другие варианты dev-фронта
         ));
 

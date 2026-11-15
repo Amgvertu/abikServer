@@ -16,4 +16,9 @@ public interface SmsSender {
      * @param purpose назначение (регистрация, восстановление пароля и т.д.)
      */
     void send(String phone, String text, SmsPurpose purpose);
+
+    /** Сквозной идентификатор связывает создание кода, шлюз, оператора и проверку. */
+    default void send(String phone, String text, SmsPurpose purpose, String requestId) {
+        send(phone, text, purpose);
+    }
 }

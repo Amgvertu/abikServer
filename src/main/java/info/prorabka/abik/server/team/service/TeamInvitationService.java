@@ -197,6 +197,11 @@ public class TeamInvitationService {
                 .orElseThrow(() -> new NotFoundException("Приглашение не найдено"));
 
         teamMemberService.requireMembershipManager(inv.getTeamId(), actorUserId);
+        Team team = teamRepository.findById(inv.getTeamId())
+                .orElseThrow(() -> new NotFoundException("Команда не найдена"));
+        if (team.getStatus() != TeamStatus.ACTIVE) {
+            throw new ForbiddenException("Команда заблокирована. Доступен только просмотр истории.");
+        }
 
         if (inv.getStatus() != InvitationStatus.PENDING) {
             throw new BadRequestException("Приглашение уже обработано");
@@ -218,6 +223,12 @@ public class TeamInvitationService {
     private TeamInvitation loadPendingForUser(Long invitationId, Long userId) {
         TeamInvitation inv = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new NotFoundException("Приглашение не найдено"));
+
+        Team team = teamRepository.findById(inv.getTeamId())
+                .orElseThrow(() -> new NotFoundException("Команда не найдена"));
+        if (team.getStatus() != TeamStatus.ACTIVE) {
+            throw new ForbiddenException("Команда заблокирована. Доступен только просмотр истории.");
+        }
 
         if (!inv.getInvitedUserId().equals(userId)) {
             throw new ForbiddenException("Это приглашение не для вас");

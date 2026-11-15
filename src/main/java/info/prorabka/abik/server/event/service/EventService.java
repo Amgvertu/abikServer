@@ -131,9 +131,11 @@ public class EventService {
                 Set<UserPosition> pos = profileRepo.findById(v.getUserId())
                         .map(p -> (Set<UserPosition>) new HashSet<>(p.getPositions()))
                         .orElse(Set.of());
+                // Универсал учитывается только один раз, как и в детальном списке:
+                // приоритет основной группы — вратарь, затем защитник, затем нападающий.
                 if (pos.contains(UserPosition.GOALKEEPER)) goalies++;
-                if (pos.contains(UserPosition.DEFENDER)) defenders++;
-                if (pos.contains(UserPosition.FORWARD)) forwards++;
+                else if (pos.contains(UserPosition.DEFENDER)) defenders++;
+                else if (pos.contains(UserPosition.FORWARD)) forwards++;
             }
 
             Integer reserveCount = mainSquadLimit(e) == null

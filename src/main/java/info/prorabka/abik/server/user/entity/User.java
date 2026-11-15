@@ -51,6 +51,7 @@ public class User {
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
         if (isSuperAdmin == null) isSuperAdmin = false;
+        if (isAdAdmin == null) isAdAdmin = false;
     }
 
     @PreUpdate
@@ -60,4 +61,14 @@ public class User {
 
     @Column(name = "is_super_admin", nullable = false)
     private Boolean isSuperAdmin;
+
+    @Column(name = "is_ad_admin", nullable = false)
+    @Builder.Default
+    private Boolean isAdAdmin = false;
+
+    @Column(name = "block_reason", length = 500)
+    private String blockReason;
+
+    @Column(name = "blocked_at")
+    private OffsetDateTime blockedAt;
 }

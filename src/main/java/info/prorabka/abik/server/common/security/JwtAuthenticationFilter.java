@@ -1,5 +1,7 @@
 package info.prorabka.abik.server.common.security;
 
+import info.prorabka.abik.server.user.entity.UserStatus;
+import info.prorabka.abik.server.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,9 +31,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtService jwtService;
+    private final UserRepository users;
 
-    public JwtAuthenticationFilter(JwtService jwtService) {
+    public JwtAuthenticationFilter(JwtService jwtService, UserRepository users) {
         this.jwtService = jwtService;
+        this.users = users;
     }
 
     @Override
@@ -48,6 +52,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             if (jwtService.isValid(token)) {
                 try {
                     Long userId = jwtService.parseUserId(token);
+                    boolean active = users.findById(userId)
+                            .map(user -> user.getStatus() == UserStatus.ACTIVE)
+                            .orElse(false);
+                    if (!active) {
+                        SecurityContextHolder.clearContext();
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
                     UserPrincipal principal = new UserPrincipal(userId);
 
                     var authentication = new UsernamePasswordAuthenticationToken(

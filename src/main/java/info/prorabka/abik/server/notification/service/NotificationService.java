@@ -33,11 +33,14 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final PushSender pushSender;
+    private final WebPushService webPushService;
 
     public NotificationService(NotificationRepository notificationRepository,
-                               PushSender pushSender) {
+                               PushSender pushSender,
+                               WebPushService webPushService) {
         this.notificationRepository = notificationRepository;
         this.pushSender = pushSender;
+        this.webPushService = webPushService;
     }
 
     // ============================================================
@@ -66,8 +69,12 @@ public class NotificationService {
                     .build();
             Notification saved = notificationRepository.save(entity);
 
-            boolean sent = pushSender.send(userId, target, type, title, body, payload);
-            saved.setDeliveryStatus(sent ? "SENT" : "FAILED");
+            boolean nativeSent = pushSender.send(userId, target, type, title, body, payload);
+            // Web Push не участвует в нативном каскаде: у одного пользователя могут быть
+            // одновременно Android-телефон, desktop-браузер и PWA на iOS.
+            boolean webSent = TARGET_CLIENT.equals(target)
+                    && webPushService.sendToUser(userId, type, title, body, payload);
+            saved.setDeliveryStatus(nativeSent || webSent ? "SENT" : "FAILED");
             notificationRepository.save(saved);
 
         } catch (Exception e) {

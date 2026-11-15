@@ -85,7 +85,9 @@ public class AuthService {
                 }
                 case ACTIVE -> throw new ConflictException(
                         "Этот номер уже зарегистрирован. Воспользуйтесь входом или восстановлением пароля.");
-                case BLOCKED -> throw new ForbiddenException("Аккаунт заблокирован");
+                case BLOCKED -> throw new ForbiddenException(user.getBlockReason() == null || user.getBlockReason().isBlank()
+                    ? "Аккаунт заблокирован"
+                    : "Аккаунт заблокирован: " + user.getBlockReason());
                 case DELETED -> throw new ConflictException(
                         "Этот номер ранее был использован. Обратитесь в поддержку.");
             }
@@ -154,7 +156,9 @@ public class AuthService {
             case ACTIVE -> { /* ok */ }
             case PENDING -> throw new ForbiddenException(
                     "Регистрация не завершена. Подтвердите номер SMS-кодом.");
-            case BLOCKED -> throw new ForbiddenException("Аккаунт заблокирован");
+            case BLOCKED -> throw new ForbiddenException(user.getBlockReason() == null || user.getBlockReason().isBlank()
+                    ? "Аккаунт заблокирован"
+                    : "Аккаунт заблокирован: " + user.getBlockReason());
             case DELETED -> throw new ForbiddenException("Аккаунт удалён");
         }
 

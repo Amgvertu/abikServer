@@ -39,3 +39,8 @@ app:
     enabled: false
     app-id: ""
     app-secret: ""
+  web-push:
+    enabled: ${WEB_PUSH_ENABLED:false}
+    subject: ${WEB_PUSH_SUBJECT:mailto:admin@abik.info}
+    public-key: ${WEB_PUSH_PUBLIC_KEY:}
+    private-key: ${WEB_PUSH_PRIVATE_KEY:}

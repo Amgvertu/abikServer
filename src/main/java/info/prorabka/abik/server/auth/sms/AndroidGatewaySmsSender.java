@@ -16,7 +16,6 @@ import java.util.concurrent.TimeUnit;
 public class AndroidGatewaySmsSender implements SmsSender {
 
     private static final Logger log = LoggerFactory.getLogger(AndroidGatewaySmsSender.class);
-
     private final SmsGatewayService gatewayService;
 
     public AndroidGatewaySmsSender(SmsGatewayService gatewayService) {
@@ -25,14 +24,18 @@ public class AndroidGatewaySmsSender implements SmsSender {
 
     @Override
     public void send(String phone, String text, SmsPurpose purpose) {
+        send(phone, text, purpose, null);
+    }
+
+    @Override
+    public void send(String phone, String text, SmsPurpose purpose, String requestId) {
         String code = extractCode(text);
         try {
-            CompletableFuture<Boolean> future = gatewayService.sendSms(
-                    phone, code, purpose.name(), text);
+            CompletableFuture<Boolean> future = gatewayService.sendSms(phone, code, purpose.name(), text, requestId);
             if (!future.get(50, TimeUnit.SECONDS)) {
                 throw new BadRequestException("SMS-шлюз недоступен. Попробуйте ещё раз.");
             }
-            log.info("SMS передана Android-шлюзу: phone={}, purpose={}", phone, purpose);
+            log.info("SMS передана Android-шлюзу: phone={}, purpose={}, requestId={}", phone, purpose, requestId);
         } catch (BadRequestException e) {
             throw e;
         } catch (InterruptedException e) {
@@ -44,7 +47,6 @@ public class AndroidGatewaySmsSender implements SmsSender {
         }
     }
 
-    /** Код нужен для совместимости с общим форматом команды; текст остаётся основным. */
     private String extractCode(String text) {
         java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\b\\d{4,8}\\b").matcher(text);
         return matcher.find() ? matcher.group() : "";
