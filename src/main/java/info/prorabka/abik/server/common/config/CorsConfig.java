@@ -24,6 +24,7 @@ public class CorsConfig {
         config.setAllowedOrigins(List.of(
                 "https://abik.info",         // Прод-фронт
                 "https://www.abik.info",     // Прод-фронт (с www)
+                "https://soberi.info",       // Временный Web-хостинг Beget
                 "http://localhost:3000",     // React dev-server (по умолчанию)
                 "http://localhost:5173",     // Vite dev-server (по умолчанию)
                 "http://localhost:7100",     // Локальный preview abik-web
