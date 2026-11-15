@@ -32,8 +32,8 @@ app:
     service-account-path: "file:/home/amgvertu/projects/abik/config/firebase-service-account.json"
     enabled: true
   rustore:
-    enabled: false
-    project-id: ${RUSTORE_PROJECT_ID:}
+    enabled: true
+    project-id: ${RUSTORE_PROJECT_ID:68N-c-EaopoIkE0qs0op6rGMyOtWenJc}
     service-token: ${RUSTORE_SERVICE_TOKEN:}
   huawei:
     enabled: false

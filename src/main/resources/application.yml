@@ -52,8 +52,9 @@ app:
     enabled: true                    # false — в dev-режиме просто логировать
   rustore:
     enabled: false
-    project-id: "3hXUg4XY1qsSRn0Gshfr3k28EoKtWlc9"
-    service-token: "WAc0IVmZV5W0i5O995DDOtjP2bsNTH7wvCSg66IDgO8tj0qEWhaYkm2GCJjl3LUU"
+    project-id: ${RUSTORE_PROJECT_ID:68N-c-EaopoIkE0qs0op6rGMyOtWenJc}
+    # Сервисный токен задаётся только в защищённом env-файле сервера.
+    service-token: ${RUSTORE_SERVICE_TOKEN:}
   huawei:
     enabled: false
     app-id: ""

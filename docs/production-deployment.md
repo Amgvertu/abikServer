@@ -150,11 +150,13 @@ openssl rand -hex 32
 nano /home/amgvertu/projects/abik/config/abik-server.env
 ```
 
-Вставьте две строки, заменив значения в кавычках:
+Вставьте четыре строки, заменив значения в кавычках:
 
 ```ini
 SPRING_DATASOURCE_PASSWORD="ПАРОЛЬ_ПОЛЬЗОВАТЕЛЯ_user_abik"
 APP_JWT_SECRET="СГЕНЕРИРОВАННАЯ_СТРОКА_OPENSSL"
+RUSTORE_PROJECT_ID="PROJECT_ID_ИЗ_RUSTORE_КОНСОЛИ"
+RUSTORE_SERVICE_TOKEN="СЕРВИСНЫЙ_ТОКЕН_RUSTORE"
 ```
 
 Сохраните файл: `Ctrl+O`, затем `Enter`; выйдите: `Ctrl+X`.
