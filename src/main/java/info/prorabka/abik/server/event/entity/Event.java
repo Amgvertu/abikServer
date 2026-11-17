@@ -65,6 +65,11 @@ public class Event {
     @Column(name = "charge_template_id")
     private Long chargeTemplateId;
 
+    /** Для VOTE в двухсторонке: исключить игроков с начисленным абонементом на месяц события. */
+    @Column(name = "exclude_subscription_holders", nullable = false)
+    @Builder.Default
+    private Boolean excludeSubscriptionHolders = false;
+
     /**
      * Явный список получателей ручного начисления (режим MANUAL).
      * Пустой список — получатели определяются по способу начисления

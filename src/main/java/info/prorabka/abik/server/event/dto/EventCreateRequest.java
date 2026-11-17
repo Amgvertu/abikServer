@@ -24,6 +24,7 @@ public record EventCreateRequest(
         Long chargeAmountKopecks,
         String chargeDistribution,
         Long chargeTemplateId,
+        Boolean excludeSubscriptionHolders,
         Set<Long> chargeMemberIds,
         Long voterListId
 ) {}

@@ -3,10 +3,13 @@ package info.prorabka.abik.server.charge.repository;
 import info.prorabka.abik.server.charge.entity.Charge;
 import info.prorabka.abik.server.charge.entity.ChargeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface ChargeRepository extends JpaRepository<Charge, Long> {
@@ -27,6 +30,19 @@ public interface ChargeRepository extends JpaRepository<Charge, Long> {
     /** Проверка: не сгенерировано ли уже начисление по шаблону за период. */
     Optional<Charge> findByTemplateIdAndUserIdAndPeriodYearAndPeriodMonth(
             Long templateId, Long userId, Short year, Short month);
+
+    /** Пользователи с действующим начисленным абонементом по опросу на месяц. */
+    @Query("""
+            SELECT c.userId FROM Charge c
+            JOIN ChargeTemplate t ON t.id = c.templateId
+            WHERE c.teamId = :teamId AND t.pollEnabled = TRUE
+              AND c.periodYear = :year AND c.periodMonth = :month
+              AND c.status IN :statuses
+            """)
+    Set<Long> findSubscriptionHolderIds(@Param("teamId") Long teamId,
+                                        @Param("year") Short year,
+                                        @Param("month") Short month,
+                                        @Param("statuses") List<ChargeStatus> statuses);
 
     /** Все активные начисления пользователя (для распределения платежа). */
     List<Charge> findByTeamIdAndUserIdAndStatusInOrderByDueDateAscIdAsc(

@@ -52,6 +52,17 @@ public class ChargeTemplate {
     @Column(name = "day_of_month")
     private Short dayOfMonth;
 
+    /** Отдельный ежемесячный абонемент, получатели которого определяются голосованием. */
+    @Column(name = "poll_enabled", nullable = false)
+    @Builder.Default
+    private Boolean pollEnabled = false;
+
+    @Column(name = "poll_start_day")
+    private Short pollStartDay;
+
+    @Column(name = "poll_end_day")
+    private Short pollEndDay;
+
     @Column(name = "start_date")
     private LocalDate startDate;
 
@@ -89,6 +100,7 @@ public class ChargeTemplate {
         if (createdAt == null) createdAt = now;
         if (updatedAt == null) updatedAt = now;
         if (active == null) active = true;
+        if (pollEnabled == null) pollEnabled = false;
     }
 
     @PreUpdate

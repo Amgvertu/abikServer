@@ -15,6 +15,9 @@ public interface ChargeTemplateRepository extends JpaRepository<ChargeTemplate, 
     /** Активные шаблоны команды. */
     List<ChargeTemplate> findByTeamIdAndActiveOrderByCreatedAtDesc(Long teamId, Boolean active);
 
+    /** Активный шаблон абонемента по опросу (на команду допускается один). */
+    List<ChargeTemplate> findByTeamIdAndPollEnabledTrueAndActiveTrue(Long teamId);
+
     /** Активные систематические шаблоны всех команд — для планировщика. */
     List<ChargeTemplate> findByActiveTrue();
 }

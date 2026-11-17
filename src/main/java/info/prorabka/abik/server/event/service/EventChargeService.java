@@ -168,6 +168,27 @@ public class EventChargeService {
                     .filter(mainSquad::contains)
                     .collect(Collectors.toSet());
             groupId = template.getGroupId();
+        } else if ("VOTE".equals(mode)) {
+            if (event.getChargeAmountKopecks() == null || event.getChargeAmountKopecks() <= 0) {
+                throw new BadRequestException("Не указана сумма начисления");
+            }
+            String distribution = event.getChargeDistribution();
+            if (!"EACH_ATTENDED".equals(distribution) && !"SPLIT_ATTENDED".equals(distribution)) {
+                throw new BadRequestException("Для начисления по опросу выберите начисление каждому или деление суммы");
+            }
+            amountKopecks = event.getChargeAmountKopecks();
+            split = "SPLIT_ATTENDED".equals(distribution);
+            // Только основной состав, ответивший «Иду»: без вратарей, тренеров и резерва.
+            recipients = mainSquad.stream()
+                    .filter(uid -> !isGoalkeeper(uid))
+                    .collect(Collectors.toSet());
+
+            String groupName = event.getSection() == EventSection.SCRIMMAGE
+                    ? "Двухсторонка" : "Регулярка";
+            ChargeGroup group = groupRepository.findByTeamIdAndName(teamId, groupName)
+                    .orElseGet(() -> groupRepository.save(ChargeGroup.builder()
+                            .teamId(teamId).name(groupName).build()));
+            groupId = group.getId();
         } else {
             // MANUAL
             if (event.getChargeAmountKopecks() == null) {
@@ -198,6 +219,18 @@ public class EventChargeService {
                     .orElseGet(() -> groupRepository.save(ChargeGroup.builder()
                             .teamId(teamId).name(groupName).build()));
             groupId = group.getId();
+        }
+
+        if ("VOTE".equals(mode) && event.getSection() == EventSection.SCRIMMAGE
+                && Boolean.TRUE.equals(event.getExcludeSubscriptionHolders())) {
+            Set<Long> holders = chargeRepository.findSubscriptionHolderIds(
+                    teamId,
+                    (short) event.getEventDate().getYear(),
+                    (short) event.getEventDate().getMonthValue(),
+                    List.of(ChargeStatus.ACTIVE, ChargeStatus.PARTIALLY_PAID, ChargeStatus.PAID));
+            recipients = recipients.stream()
+                    .filter(userId -> !holders.contains(userId))
+                    .collect(Collectors.toSet());
         }
 
         if (recipients.isEmpty()) {

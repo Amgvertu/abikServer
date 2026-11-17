@@ -23,6 +23,7 @@ public record EventUpdateRequest(
         Long chargeAmountKopecks,
         String chargeDistribution,
         Long chargeTemplateId,
+        Boolean excludeSubscriptionHolders,
         Set<Long> chargeMemberIds,
         Long voterListId
 ) {}

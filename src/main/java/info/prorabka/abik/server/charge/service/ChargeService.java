@@ -482,6 +482,8 @@ public class ChargeService {
 
         int created = 0;
         for (ChargeTemplate template : templates) {
+            // У абонемента по опросу отдельный планировщик и получатели по голосам.
+            if (Boolean.TRUE.equals(template.getPollEnabled())) continue;
             if (template.getType() != ChargeType.SYSTEMATIC) continue;
             if (template.getDayOfMonth() == null) continue;
 

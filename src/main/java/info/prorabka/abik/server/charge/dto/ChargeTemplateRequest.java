@@ -32,10 +32,20 @@ public record ChargeTemplateRequest(
         @NotNull(message = "Периодичность обязательна")
         Periodicity periodicity,
 
-        /** Только для SYSTEMATIC. 1-28. */
+        /** Только для обычного SYSTEMATIC. 1-28. */
         @Min(value = 1, message = "День месяца от 1 до 28")
         @Max(value = 28, message = "День месяца от 1 до 28")
         Short dayOfMonth,
+
+        Boolean pollEnabled,
+
+        @Min(value = 1, message = "День начала опроса от 1 до 31")
+        @Max(value = 31, message = "День начала опроса от 1 до 31")
+        Short pollStartDay,
+
+        @Min(value = 1, message = "День окончания опроса от 1 до 31")
+        @Max(value = 31, message = "День окончания опроса от 1 до 31")
+        Short pollEndDay,
 
         LocalDate startDate,
 
@@ -44,7 +54,6 @@ public record ChargeTemplateRequest(
         @NotNull(message = "Способ распределения обязателен")
         ChargeDistribution distribution,
 
-        @NotEmpty(message = "Укажите хотя бы одного участника")
         Set<Long> memberIds,
 
         Boolean active

@@ -246,6 +246,7 @@ public class EventService {
                 e.getChargeAmountKopecks(),
                 e.getChargeDistribution(),
                 e.getChargeTemplateId(),
+                e.getExcludeSubscriptionHolders(),
                 e.getChargeMemberIds(),
                 e.getChargedAt() != null,
                 e.getLineupRevision(),
@@ -279,6 +280,7 @@ public class EventService {
                     .chargeAmountKopecks(req.chargeAmountKopecks())
                     .chargeDistribution(req.chargeDistribution())
                     .chargeTemplateId(req.chargeTemplateId())
+                    .excludeSubscriptionHolders(Boolean.TRUE.equals(req.excludeSubscriptionHolders()))
                     .chargeMemberIds(toIdSet(req.chargeMemberIds()))
                     .voterListId(req.voterListId())
                     .status("ACTIVE").createdBy(actor).build());
@@ -324,6 +326,7 @@ public class EventService {
                         .chargeAmountKopecks(req.chargeAmountKopecks())
                         .chargeDistribution(req.chargeDistribution())
                         .chargeTemplateId(req.chargeTemplateId())
+                        .excludeSubscriptionHolders(Boolean.TRUE.equals(req.excludeSubscriptionHolders()))
                         .chargeMemberIds(toIdSet(req.chargeMemberIds()))
                         .voterListId(req.voterListId())
                         .status("ACTIVE").createdBy(actor).build());
@@ -363,6 +366,7 @@ public class EventService {
         e.setChargeAmountKopecks(req.chargeAmountKopecks());
         e.setChargeDistribution(req.chargeDistribution());
         e.setChargeTemplateId(req.chargeTemplateId());
+        e.setExcludeSubscriptionHolders(Boolean.TRUE.equals(req.excludeSubscriptionHolders()));
         e.setChargeMemberIds(toIdSet(req.chargeMemberIds()));
         e.setVoterListId(req.voterListId());
         // Настройки могли измениться — разрешаем начислить заново
@@ -399,6 +403,7 @@ public class EventService {
                 f.setChargeAmountKopecks(req.chargeAmountKopecks());
                 f.setChargeDistribution(req.chargeDistribution());
                 f.setChargeTemplateId(req.chargeTemplateId());
+                f.setExcludeSubscriptionHolders(Boolean.TRUE.equals(req.excludeSubscriptionHolders()));
                 f.setChargeMemberIds(toIdSet(req.chargeMemberIds()));
                 f.setVoterListId(req.voterListId());
                 f.setChargedAt(null);

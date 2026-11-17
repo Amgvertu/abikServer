@@ -26,6 +26,7 @@ public record EventDetailResponse(
         Long chargeAmountKopecks,
         String chargeDistribution,
         Long chargeTemplateId,
+        Boolean excludeSubscriptionHolders,
         java.util.Set<Long> chargeMemberIds,
         Boolean charged,
         Long lineupRevision,
