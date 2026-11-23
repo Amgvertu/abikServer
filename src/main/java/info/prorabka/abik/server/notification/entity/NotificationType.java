@@ -33,5 +33,7 @@ public enum NotificationType {
     /** Персональное поздравление в день праздника. */
     HOLIDAY_GREETING,
     /** Сообщение администрации сервиса или системное административное уведомление. */
-    ADMIN_MESSAGE
+    ADMIN_MESSAGE,
+    /** Открыт ежемесячный опрос на абонемент. */
+    SUBSCRIPTION_POLL_CREATED
 }

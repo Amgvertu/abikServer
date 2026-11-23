@@ -1,5 +1,6 @@
 package info.prorabka.abik.server.charge.service;
 
+import info.prorabka.abik.server.charge.dto.ActiveSubscriptionResponse;
 import info.prorabka.abik.server.charge.dto.SubscriptionPollResponse;
 import info.prorabka.abik.server.charge.dto.SubscriptionPollVoteRequest;
 import info.prorabka.abik.server.charge.entity.*;
@@ -187,6 +188,10 @@ public class SubscriptionPollService {
                 .validUntil(validMonth.atEndOfMonth())
                 .build();
         pollRepository.save(poll);
+        memberRepository.findByTeamIdAndStatusOrderByJoinedAtAsc(team.getId(), MemberStatus.ACTIVE)
+                .forEach(member -> notificationService.notifySubscriptionPollCreated(
+                        member.getUserId(), team.getId(), team.getName(), poll.getId(),
+                        poll.getValidFrom(), poll.getValidUntil()));
         log.info("Создан опрос абонемента: teamId={}, templateId={}, период={}",
                 team.getId(), template.getId(), period);
     }
@@ -240,6 +245,31 @@ public class SubscriptionPollService {
             log.info("Начисления по опросу созданы: pollId={}, количество={}", poll.getId(), created);
         }
         return created;
+    }
+
+    /** Действующие абонементы пользователя по всем активным командам. */
+    @Transactional(readOnly = true)
+    public List<ActiveSubscriptionResponse> activeSubscriptions(Long userId) {
+        return memberRepository.findByUserIdAndStatusOrderByJoinedAtDesc(userId, MemberStatus.ACTIVE)
+                .stream()
+                .map(member -> teamRepository.findById(member.getTeamId()).orElse(null))
+                .filter(team -> team != null && team.getStatus() == TeamStatus.ACTIVE)
+                .flatMap(team -> {
+                    YearMonth validMonth = YearMonth.from(teamDate(team, LocalDate.now()));
+                    return chargeRepository.findSubscriptionCharges(
+                                    team.getId(), userId,
+                                    (short) validMonth.getYear(), (short) validMonth.getMonthValue(),
+                                    List.of(ChargeStatus.ACTIVE, ChargeStatus.PARTIALLY_PAID, ChargeStatus.PAID))
+                            .stream()
+                            .map(charge -> new ActiveSubscriptionResponse(
+                                    team.getId(), team.getName(),
+                                    charge.getDescription() == null || charge.getDescription().isBlank()
+                                            ? "Абонемент" : charge.getDescription(),
+                                    validMonth.atDay(1), validMonth.atEndOfMonth()));
+                })
+                .sorted(Comparator.comparing(ActiveSubscriptionResponse::teamName)
+                        .thenComparing(ActiveSubscriptionResponse::validFrom))
+                .toList();
     }
 
     private SubscriptionPollResponse toResponse(SubscriptionPoll poll, Long currentUserId) {

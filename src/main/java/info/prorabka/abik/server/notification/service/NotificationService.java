@@ -265,6 +265,22 @@ public class NotificationService {
                 Map.of("teamId", teamId, "eventId", eventId));
     }
 
+    @Transactional
+    public void notifySubscriptionPollCreated(Long userId, Long teamId, String teamName,
+                                              Long pollId, java.time.LocalDate validFrom,
+                                              java.time.LocalDate validUntil) {
+        String month = java.time.YearMonth.from(validFrom).format(
+                java.time.format.DateTimeFormatter.ofPattern("LLLL yyyy",
+                        java.util.Locale.forLanguageTag("ru")));
+        send(userId, NotificationType.SUBSCRIPTION_POLL_CREATED,
+                "Новый опрос на абонемент",
+                "В команде «" + teamName + "» открыт опрос на абонемент на " + month
+                        + ". Примите участие в голосовании.",
+                teamId,
+                Map.of("teamId", teamId, "pollId", pollId,
+                        "validFrom", validFrom.toString(), "validUntil", validUntil.toString()));
+    }
+
     // ============================================================
     // Helpers
     // ============================================================

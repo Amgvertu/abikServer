@@ -44,6 +44,21 @@ public interface ChargeRepository extends JpaRepository<Charge, Long> {
                                         @Param("month") Short month,
                                         @Param("statuses") List<ChargeStatus> statuses);
 
+    /** Действующие начисления абонемента по опросу пользователя в команде за месяц. */
+    @Query("""
+            SELECT c FROM Charge c
+            JOIN ChargeTemplate t ON t.id = c.templateId
+            WHERE c.teamId = :teamId AND c.userId = :userId AND t.pollEnabled = TRUE
+              AND c.periodYear = :year AND c.periodMonth = :month
+              AND c.status IN :statuses
+            ORDER BY c.dueDate ASC, c.id ASC
+            """)
+    List<Charge> findSubscriptionCharges(@Param("teamId") Long teamId,
+                                         @Param("userId") Long userId,
+                                         @Param("year") Short year,
+                                         @Param("month") Short month,
+                                         @Param("statuses") List<ChargeStatus> statuses);
+
     /** Все активные начисления пользователя (для распределения платежа). */
     List<Charge> findByTeamIdAndUserIdAndStatusInOrderByDueDateAscIdAsc(
             Long teamId, Long userId, List<ChargeStatus> statuses);

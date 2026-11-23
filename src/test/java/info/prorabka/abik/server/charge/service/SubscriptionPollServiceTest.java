@@ -138,6 +138,58 @@ class SubscriptionPollServiceTest {
     }
 
     @Test
+    void notifiesActiveMembersOnlyOnceWhenPollIsCreated() {
+        Team team = team();
+        ChargeTemplate template = template(1, 28, ChargeDistribution.FIXED, 30_000L);
+        SubscriptionPoll existing = poll(template, LocalDate.of(2027, 2, 1), LocalDate.of(2027, 2, 28));
+        when(teamRepository.findByStatusOrderByNameAsc(TeamStatus.ACTIVE)).thenReturn(List.of(team));
+        when(templateRepository.findByTeamIdAndActiveOrderByCreatedAtDesc(1L, true))
+                .thenReturn(List.of(template));
+        when(pollRepository.findByTemplateIdAndPeriodYearAndPeriodMonth(10L, (short) 2027, (short) 2))
+                .thenReturn(Optional.empty(), Optional.of(existing));
+        when(memberRepository.findByTeamIdAndStatusOrderByJoinedAtAsc(1L, MemberStatus.ACTIVE))
+                .thenReturn(List.of(member(1L, false), member(2L, false)));
+
+        service.process(LocalDate.of(2027, 2, 20));
+        service.process(LocalDate.of(2027, 2, 20));
+
+        verify(pollRepository, times(1)).save(any(SubscriptionPoll.class));
+        verify(notificationService, times(2)).notifySubscriptionPollCreated(
+                anyLong(), anyLong(), any(), any(), any(), any());
+    }
+
+    @Test
+    void activeSubscriptionsIncludeAllActiveTeams() {
+        Team first = team();
+        Team second = Team.builder().id(2L).name("Вторая команда").status(TeamStatus.ACTIVE).build();
+        java.time.YearMonth current = java.time.YearMonth.now();
+        when(memberRepository.findByUserIdAndStatusOrderByJoinedAtDesc(7L, MemberStatus.ACTIVE))
+                .thenReturn(List.of(member(7L, false), TeamMember.builder()
+                        .teamId(2L).userId(7L).status(MemberStatus.ACTIVE).build()));
+        when(teamRepository.findById(1L)).thenReturn(Optional.of(first));
+        when(teamRepository.findById(2L)).thenReturn(Optional.of(second));
+        when(chargeRepository.findSubscriptionCharges(anyLong(), anyLong(), any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    Long teamId = invocation.getArgument(0);
+                    return List.of(Charge.builder().teamId(teamId).description("Абонемент")
+                            .periodYear((short) current.getYear())
+                            .periodMonth((short) current.getMonthValue()).build());
+                });
+
+        List<info.prorabka.abik.server.charge.dto.ActiveSubscriptionResponse> result =
+                service.activeSubscriptions(7L);
+
+        assertEquals(2, result.size());
+        assertEquals(Set.of("Abik", "Вторая команда"), result.stream()
+                .map(info.prorabka.abik.server.charge.dto.ActiveSubscriptionResponse::teamName)
+                .collect(java.util.stream.Collectors.toSet()));
+        result.forEach(subscription -> {
+            assertEquals(current.atDay(1), subscription.validFrom());
+            assertEquals(current.atEndOfMonth(), subscription.validUntil());
+        });
+    }
+
+    @Test
     void participantCanChangeVoteDuringPoll() {
         LocalDate today = LocalDate.now();
         ChargeTemplate template = template(1, 31, ChargeDistribution.FIXED, 10_000L);
