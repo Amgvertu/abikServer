@@ -19,7 +19,6 @@ public record TeamCreateRequest(
         @NotNull(message = "Домашний регион обязателен")
         Long homeRegionId,
 
-        @NotBlank(message = "Логотип обязателен")
         @Size(max = 500)
         String logoUrl,
 

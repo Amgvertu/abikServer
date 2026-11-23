@@ -73,8 +73,8 @@ public class TeamsController {
             description = """
                     Создаёт новую команду. Создатель **автоматически становится владельцем** (OWNER).
 
-                    **Обязательные поля:** name, cityId, homeRegionId, logoUrl.
-                    **Опциональные:** description, season.
+                    **Обязательные поля:** name, cityId, homeRegionId.
+                    **Опциональные:** logoUrl, description, season.
 
                     **Доступ:** любой аутентифицированный пользователь.
                     """

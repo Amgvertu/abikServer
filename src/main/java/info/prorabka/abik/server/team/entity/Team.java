@@ -30,7 +30,7 @@ public class Team {
     @Column(name = "home_region_id", nullable = false)
     private Long homeRegionId;
 
-    @Column(name = "logo_url", nullable = false, length = 500)
+    @Column(name = "logo_url", length = 500)
     private String logoUrl;
 
     @Column(columnDefinition = "TEXT")

@@ -69,7 +69,7 @@ public class TeamService {
                 .name(req.name().trim())
                 .cityId(city.getId())
                 .homeRegionId(region.getId())
-                .logoUrl(req.logoUrl().trim())
+                .logoUrl(trimOrNull(req.logoUrl()))
                 .description(trimOrNull(req.description()))
                 .season(trimOrNull(req.season()))
                 .status(TeamStatus.ACTIVE)
