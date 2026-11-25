@@ -33,8 +33,10 @@ public class FileController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> upload(
             @Parameter(description = "Файл (jpg/png/webp, до 5 МБ)")
-            @RequestParam("file") MultipartFile file) {
-        String url = storage.store(file);
+            @RequestParam("file") MultipartFile file,
+            @Parameter(description = "AVATAR — кадрирование и JPEG 512 × 512; GENERAL — без изменений")
+            @RequestParam(defaultValue = "GENERAL") FilePurpose purpose) {
+        String url = storage.store(file, purpose);
         return ResponseEntity.ok(Map.of("url", url));
     }
 

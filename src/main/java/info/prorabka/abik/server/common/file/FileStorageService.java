@@ -36,7 +36,13 @@ public class FileStorageService {
     @Value("${app.files.max-size-bytes:5242880}")
     private long maxSizeBytes;
 
+    private final AvatarImageProcessor avatarImageProcessor;
+
     private Path storagePath;
+
+    public FileStorageService(AvatarImageProcessor avatarImageProcessor) {
+        this.avatarImageProcessor = avatarImageProcessor;
+    }
 
     @PostConstruct
     void init() throws IOException {
@@ -45,8 +51,13 @@ public class FileStorageService {
         log.info("Файловое хранилище: {}", storagePath);
     }
 
-    /** Сохранить файл, вернуть URL вида /api/v1/files/<uuid>.<ext>. */
+    /** Сохранить обычный файл без обработки. */
     public String store(MultipartFile file) {
+        return store(file, FilePurpose.GENERAL);
+    }
+
+    /** Сохранить файл, вернуть URL вида /api/v1/files/<uuid>.<ext>. */
+    public String store(MultipartFile file, FilePurpose purpose) {
         if (file == null || file.isEmpty()) {
             throw new BadRequestException("Файл не передан");
         }
@@ -59,16 +70,23 @@ public class FileStorageService {
         }
 
         String originalName = file.getOriginalFilename();
-        String ext = extractExt(originalName);
-        if (!ALLOWED_EXT.contains(ext)) {
+        String sourceExt = extractExt(originalName);
+        if (!ALLOWED_EXT.contains(sourceExt)) {
             throw new BadRequestException("Недопустимое расширение");
         }
 
+        String ext = purpose == FilePurpose.AVATAR ? "jpg" : sourceExt;
         String fileName = UUID.randomUUID().toString().replace("-", "") + "." + ext;
         Path target = storagePath.resolve(fileName);
 
-        try (InputStream in = file.getInputStream()) {
-            Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+        try {
+            if (purpose == FilePurpose.AVATAR) {
+                avatarImageProcessor.writeNormalized(file, target);
+            } else {
+                try (InputStream in = file.getInputStream()) {
+                    Files.copy(in, target, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
         } catch (IOException e) {
             log.error("Ошибка сохранения файла {}", fileName, e);
             throw new RuntimeException("Не удалось сохранить файл", e);
